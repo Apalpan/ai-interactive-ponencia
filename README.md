@@ -37,6 +37,8 @@ equipos. Pensado para **entender cada concepto y cómo se cruza con los demás**
   Motivación · Conceptos clave (enlazados) · Proyecto y estrategia (4 pasos) ·
   Convencional vs. Propuesto (valor) · Key Takeaway + ideas.
 - `Mapa de conceptos` — el territorio completo por categoría, todo navegable.
+- `Tips & recursos` — 50 tips · 30 trucos de prompt · 20 errores comunes · 20 anécdotas
+  didácticas · analogías clave. Con 🎲 recurso al azar.
 
 **Presentación (decks 16:9):**
 - `Apertura` · `Fundamentos de IA` · **`Paradigmas de IA`** (Generativa/Predictiva/Agéntica
@@ -44,15 +46,20 @@ equipos. Pensado para **entender cada concepto y cómo se cruza con los demás**
   `Cierre y framework`.
 
 **Bancos (filtrables, con *revelar* y *tarjeta al azar*):**
-- `Mitos y realidades` (32) · `Casos prácticos` (22) · `Herramientas IA` (22) ·
-  `Banco de preguntas` (138, 6 categorías × 3 niveles, **exportable**) · `Productividad`
-  (10 áreas + 5 ejercicios + 16 tips).
+- `Mitos y realidades` (32) · `Casos prácticos` (**42**, 18 categorías, con info disponible,
+  métrica de éxito, primer paso y variante simple/avanzada) · `Herramientas IA` (**31**,
+  con qué hace / para qué / mejor uso / caso productividad / caso AEC / límite / riesgo /
+  alternativa / fuente) · `Banco de preguntas` (138, 6 cat × 3 niveles, **exportable**) ·
+  `Productividad` (10 áreas + 5 ejercicios).
 
-**Taller:** `Dinámicas grupales` (11) · `Gráficas y mapas`.
+**Taller:** `Dinámicas grupales` (11) · `Gráficas y mapas` (**15 visualizaciones**
+didácticas: IA/ML/DL, tokens & embeddings, RAG vs fine-tuning, impacto/facilidad,
+riesgo/autonomía, mapa de herramientas por tarea, roadmap, flujos obra/BIM/CV…).
 
 **Herramientas del ponente:** ⌘K command palette · 🎲 tarjeta aleatoria a pantalla
-completa · ◷ temporizador · 🏆 marcador por equipos · ◆ notas del ponente (`N`) ·
-☾ tema claro/oscuro · ⤢ pantalla completa · ◷ modos (rápida / taller / curso).
+completa (mito/caso/pregunta/herramienta/concepto/recurso) · ◷ temporizador ·
+🏆 marcador por equipos · 🎤 **modo facilitador** (abre timer+marcador y notas) ·
+◆ notas (`N`) · ☾ tema claro/oscuro · ⤢ pantalla completa · ◷ modos (rápida / taller / curso).
 
 ---
 
@@ -62,10 +69,11 @@ completa · ◷ temporizador · 🏆 marcador por equipos · ◆ notas del ponen
 |---|---|---|---|
 | `⌘K` / `Ctrl K` | Buscar concepto / ir a | `R` | Tarjeta aleatoria |
 | `←` / `→` | Slide anterior / siguiente | `T` | Temporizador |
-| `Espacio` | Avanzar | `P` | Marcador por equipos |
-| `Inicio` / `Fin` | Primer / último slide | `F` | Pantalla completa |
-| `G` | Índice de slides | `D` | Tema claro/oscuro |
-| `N` | Notas del ponente | `Esc` | Cerrar overlays |
+| `Espacio` | Avanzar | `S` / `P` | Marcador por equipos |
+| `Inicio` / `Fin` | Primer / último slide | `M` | Mostrar/ocultar menú |
+| `G` | Índice de slides | `F` | Pantalla completa |
+| `N` | Notas del ponente | `D` | Tema claro/oscuro |
+| `R` | Tarjeta aleatoria | `H` / `?` | Ayuda · `Esc` cerrar |
 
 ---
 
@@ -83,6 +91,7 @@ ai-interactive-ponencia/
 │   ├── conceptos.js         # 70 conceptos cruzados (rel:[ids]) + categorías
 │   ├── aprendizaje.js       # 6 rutas académicas + deck "Paradigmas"
 │   ├── slides.js            # Slides de los decks (apertura/fundamentos/aec/cierre)
+│   ├── recursos.js          # 50 tips + 30 prompt-patterns + 20 errores + 20 anécdotas
 │   ├── mitos.js herramientas.js casos.js preguntas.js
 │   ├── dinamicas.js productividad.js aec.js
 ├── .github/workflows/deploy.yml   # Publicación automática a GitHub Pages

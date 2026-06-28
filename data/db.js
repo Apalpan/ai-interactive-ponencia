@@ -102,6 +102,7 @@ window.DB.modules = [
   { id: "biblioteca",    label: "Biblioteca de conceptos", ico: "❖", group: "Aprende", kind: "library" },
   { id: "rutas",         label: "Rutas de aprendizaje", ico: "◷", group: "Aprende", kind: "rutas" },
   { id: "mapa",          label: "Mapa de conceptos",   ico: "⊞", group: "Aprende", kind: "map" },
+  { id: "recursos",      label: "Tips & recursos",     ico: "✦", group: "Aprende", kind: "recursos" },
   { id: "apertura",      label: "Apertura",            ico: "▶", group: "Presentación", kind: "deck" },
   { id: "fundamentos",   label: "Fundamentos de IA",   ico: "◆", group: "Presentación", kind: "deck" },
   { id: "paradigmas",    label: "Paradigmas de IA",    ico: "◎", group: "Presentación", kind: "deck" },

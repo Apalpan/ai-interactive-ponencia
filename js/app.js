@@ -23,7 +23,7 @@
   const lvlBadge = (n) => `<span class="badge lvl-${esc(n)}">${esc(n)}</span>`;
   const verifyBadge = `<span class="verify" title="Dato con fuente externa: confírmalo antes de presentar">⚠ verificar</span>`;
   const counts = {
-    biblioteca: DB.conceptos.length, rutas: DB.rutas.length,
+    biblioteca: DB.conceptos.length, rutas: DB.rutas.length, recursos: (DB.tips || []).length + (DB.promptPatterns || []).length,
     mitos: DB.mitos.length, casos: DB.casos.length, herramientas: DB.herramientas.length,
     preguntas: DB.preguntas.length, productividad: DB.prodAreas.length, dinamicas: DB.dinamicas.length
   };
@@ -36,6 +36,7 @@
     deckIndex: {},
     track: store.get("track", null),
     theme: store.get("theme", "dark"),
+    facilitador: store.get("facilitador", false),
     cmd: { open: false, items: [], sel: 0 },
     filters: {}, // per-bank
     teams: store.get("teams", [
@@ -69,7 +70,7 @@
       </div>`).join("");
     $("#sidebar").innerHTML = `
       <div class="brand">
-        <div class="mark"><img src="assets/brand/aecode-isotipo.png" alt="AECODE" loading="eager"></div>
+        <div class="mark"><img src="assets/brand/aecode-isotipo.png" alt="AECODE" loading="eager" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'AE',style:'font-weight:800;color:var(--lav)'}))"></div>
         <div class="name">${esc(DB.brand.title)}<small>${esc(DB.brand.subtitle)}</small></div>
       </div>
       <div class="kbar"><button id="cmdkBtn" title="Buscar / ir a (Ctrl/⌘ K)">⌕ <span>Buscar concepto o sección…</span> <span class="kbd">⌘K</span></button></div>
@@ -95,12 +96,14 @@
       <div class="spacer"></div>
       <button class="btn sm" id="randomBtn" title="Tarjeta aleatoria (R)">🎲 <span id="randomLbl">Aleatorio</span></button>
       <button class="btn icon sm" id="ovBtn" title="Índice de slides (G)">▦</button>
+      <button class="btn sm" id="facBtn" title="Modo facilitador" aria-pressed="${state.facilitador}">🎤 <span>Facilitador</span></button>
       <button class="btn icon sm" id="timerToggle" title="Temporizador (T)">◷</button>
-      <button class="btn icon sm" id="scoreToggle" title="Marcador por equipos (P)">🏆</button>
+      <button class="btn icon sm" id="scoreToggle" title="Marcador por equipos (S)">🏆</button>
       <button class="btn icon sm" id="fsBtn" title="Pantalla completa (F)">⤢</button>`;
     $("#menuBtn").onclick = () => $("#app").classList.toggle("nav-open");
     $("#randomBtn").onclick = randomForModule;
     $("#ovBtn").onclick = openOverview;
+    $("#facBtn").onclick = () => toggleFacilitator();
     $("#timerToggle").onclick = () => $("#timerPanel").classList.toggle("on");
     $("#scoreToggle").onclick = () => $("#scorePanel").classList.toggle("on");
     $("#fsBtn").onclick = toggleFs;
@@ -119,9 +122,9 @@
   function moduleOrder() { return state.track ? DB.tracks[state.track].steps : DB.modules.map(m => m.id); }
   function gotoModule(id, slideIdx) {
     const m = DB.modules.find(x => x.id === id); if (!m) return;
-    state.mod = id; markSidebar(); setCrumb();
+    state.mod = id; state._relist = null; markSidebar(); setCrumb();
     $("#app").classList.remove("nav-open");
-    location.hash = id;
+    location.hash = id; store.set("mod", id);
     if (m.kind === "deck") renderDeck(id, slideIdx || 0);
     else renderBank(id);
     $("#view .scroll")?.scrollTo(0, 0);
@@ -150,6 +153,7 @@
     $("#dNext").onclick = () => deckGo(1);
     $("#dTot").textContent = String(slides.length).padStart(2, "0");
     showSlide(state.deckIndex[id]);
+    if (state.facilitador) $("#notes").classList.add("on");
     animateBars();
   }
   function showSlide(i) {
@@ -296,7 +300,7 @@
      =================================================================== */
   function bankShell(inner) { $("#view").innerHTML = `<div class="scroll"><div class="wrap">${inner}</div></div>`; }
   function renderBank(id) {
-    ({ biblioteca: renderBiblioteca, rutas: renderRutas, mapa: renderMapa,
+    ({ biblioteca: renderBiblioteca, rutas: renderRutas, mapa: renderMapa, recursos: renderRecursos,
        mitos: renderMitos, casos: renderCasos, herramientas: renderTools, preguntas: renderPreguntas,
        productividad: renderProd, dinamicas: renderDinamicas, graficas: renderGraficas }[id] || (() => bankShell("<div class='empty'>—</div>")))();
     updateProgress();
@@ -316,7 +320,7 @@
   function wireToolbar(render, opts) {
     const f = state.filters[state.mod];
     const si = $("#searchInput");
-    if (si) si.oninput = () => { f.q = si.value; rerenderList(render); };
+    if (si) si.oninput = () => { f.q = si.value; (state._relist || render)(); };
     $("#catFilters") && ($("#catFilters").onclick = e => { const b = e.target.closest(".pill"); if (!b) return; f.cat = b.dataset.cat; render(); });
     $("#nivelSel") && ($("#nivelSel").onchange = e => { f.nivel = e.target.value; render(); });
     $("#tbRandom") && ($("#tbRandom").onclick = () => randomForModule());
@@ -340,9 +344,8 @@
       <p class="lead mt8">${DB.mitos.length} mitos frecuentes con su realidad, explicación y ejemplo. Úsalos como tarjetas: pregunta “¿mito o realidad?”, recibe votos y revela.</p>
       ${toolbar({ placeholder: "Buscar mito…", cats, random: "Mito al azar" })}
       <div class="grid auto mt16" id="list"></div>`);
-    const data = applyFilters(DB.mitos);
-    $("#list").innerHTML = data.length ? data.map(mythCard).join("") : emptyHTML();
-    setCount(data.length, DB.mitos.length);
+    state._relist = () => { const d = applyFilters(DB.mitos); $("#list").innerHTML = d.length ? d.map(mythCard).join("") : emptyHTML(); setCount(d.length, DB.mitos.length); };
+    state._relist();
     wireReveal(); wireToolbar(renderMitos, {});
   }
   function mythCard(m) {
@@ -364,9 +367,8 @@
       <p class="lead mt8">${DB.casos.length} casos por dominio. Lee el problema, lanza la pregunta a la audiencia y revela la solución con herramientas, impacto, riesgos y siguiente paso.</p>
       ${toolbar({ placeholder: "Buscar caso…", cats, random: "Caso al azar" })}
       <div class="grid auto mt16" id="list"></div>`);
-    const data = applyFilters(DB.casos);
-    $("#list").innerHTML = data.length ? data.map(caseCard).join("") : emptyHTML();
-    setCount(data.length, DB.casos.length);
+    state._relist = () => { const d = applyFilters(DB.casos); $("#list").innerHTML = d.length ? d.map(caseCard).join("") : emptyHTML(); setCount(d.length, DB.casos.length); };
+    state._relist();
     wireReveal(); wireToolbar(renderCasos, {});
   }
   function caseCard(c) {
@@ -379,11 +381,15 @@
       <div class="hidden-ans">
         <dl class="kv">
           <dt>Contexto</dt><dd>${esc(c.contexto)}</dd>
-          <dt>Solución</dt><dd>${esc(c.solucion)}</dd>
+          <dt>Info disponible</dt><dd>${esc(c.info)}</dd>
+          <dt>Solución IA</dt><dd>${esc(c.solucion)}</dd>
           <dt>Herramientas</dt><dd>${c.tools.map(t => `<span class="chip" style="padding:3px 9px;font-size:12px">${esc(t)}</span>`).join(" ")}</dd>
           <dt>Impacto</dt><dd>${esc(c.impacto)}</dd>
+          <dt>Métrica de éxito</dt><dd>${esc(c.metrica)}</dd>
           <dt>Riesgos</dt><dd>${esc(c.riesgos)}</dd>
-          <dt>Siguiente</dt><dd>${esc(c.siguiente)}</dd>
+          <dt>Primer paso</dt><dd>${esc(c.primer)}</dd>
+          <dt>Variante simple</dt><dd>${esc(c.simple)}</dd>
+          <dt>Variante avanzada</dt><dd>${esc(c.avanzada)}</dd>
         </dl></div></article>`;
   }
 
@@ -394,9 +400,8 @@
       <p class="lead mt8">${DB.herramientas.length} herramientas con qué hacen, para qué sirven, caso, riesgo y mejor uso. Preséntalas como capacidades, no como catálogo.</p>
       ${toolbar({ placeholder: "Buscar herramienta…", cats })}
       <div class="grid auto mt16" id="list"></div>`);
-    const data = applyFilters(DB.herramientas);
-    $("#list").innerHTML = data.length ? data.map(toolCard).join("") : emptyHTML();
-    setCount(data.length, DB.herramientas.length);
+    state._relist = () => { const d = applyFilters(DB.herramientas); $("#list").innerHTML = d.length ? d.map(toolCard).join("") : emptyHTML(); setCount(d.length, DB.herramientas.length); };
+    state._relist();
     wireReveal(); wireToolbar(renderTools, {});
   }
   function toolCard(t) {
@@ -407,9 +412,13 @@
       <button class="btn sm ghost no-print" data-toggle>Ver detalle ▾</button>
       <div class="hidden-ans"><dl class="kv">
         <dt>Para qué</dt><dd>${esc(t.para)}</dd>
-        <dt>Caso</dt><dd>${esc(t.caso)}</dd>
+        <dt>Mejor uso</dt><dd>${esc(t.mejor)}</dd>
+        <dt>Productividad</dt><dd>${esc(t.prod)}</dd>
+        <dt>En AEC</dt><dd>${esc(t.aec)}</dd>
+        <dt>Limitación</dt><dd>${esc(t.limite)}</dd>
         <dt>Riesgo</dt><dd>${esc(t.riesgo)}</dd>
-        <dt>Mejor uso</dt><dd>${esc(t.uso)}</dd>
+        <dt>Alternativa</dt><dd>${esc(t.alt)}</dd>
+        <dt>Fuente</dt><dd>${esc(t.fuente)}${t.verify ? " · " + verifyBadge : ""}</dd>
       </dl></div></article>`;
   }
 
@@ -432,9 +441,8 @@
       </div>
       <div class="count-note no-print mt8" id="countNote"></div>
       <div class="grid auto mt16" id="list"></div>`);
-    const data = applyFilters(DB.preguntas);
-    $("#list").innerHTML = data.length ? data.map(qCard).join("") : emptyHTML();
-    setCount(data.length, DB.preguntas.length);
+    state._relist = () => { const d = applyFilters(DB.preguntas); $("#list").innerHTML = d.length ? d.map(qCard).join("") : emptyHTML(); setCount(d.length, DB.preguntas.length); };
+    state._relist();
     wireReveal(); wireToolbar(renderPreguntas, {});
   }
   function qCard(q) {
@@ -471,9 +479,10 @@
       <h3 class="h3 mt32">Ejercicios prácticos</h3>
       <div class="grid auto mt12" id="exList">${DB.prodEjercicios.map(exCard).join("")}</div>
 
-      <h3 class="h3 mt32">Tips y trucos</h3>
-      <div class="grid auto mt12">${DB.tips.map(t => `
-        <div class="card pad-sm hover"><span class="kicker">${esc(t.cat)}</span><h4 style="font-size:16px">${esc(t.t)}</h4><p style="font-size:14px">${esc(t.d)}</p></div>`).join("")}</div>`);
+      <h3 class="h3 mt32">Tips y trucos <span class="dim" style="font-size:.55em">· primeros 8 de ${DB.tips.length}</span></h3>
+      <div class="grid auto mt12">${DB.tips.slice(0, 8).map(t => `
+        <div class="card pad-sm hover"><span class="kicker">${esc(t.cat)}</span><h4 style="font-size:16px">${esc(t.t)}</h4><p style="font-size:14px">${esc(t.d)}</p></div>`).join("")}</div>
+      <button class="btn sm mt16" data-goto="recursos">Ver los ${DB.tips.length} tips + trucos de prompt, errores y anécdotas →</button>`);
     wireReveal();
   }
   function exCard(e) {
@@ -516,43 +525,99 @@
   }
 
   /* ---------- Gráficas ---------- */
+  function aflow(nodes) {
+    return `<div class="aflow">${nodes.map((n, i) => `${i ? '<span class="ar">→</span>' : ""}<div class="node ${n.hot ? "hot" : ""}">${esc(n.t)}${n.s ? `<small>${esc(n.s)}</small>` : ""}</div>`).join("")}</div>`;
+  }
   function renderGraficas() {
-    bankShell(`<p class="eyebrow">Visual</p><h2 class="h2">Gráficas y mapas</h2>
-      <p class="lead mt8">Visualizaciones simples para explicar conceptos clave. Las cifras con ⚠ requieren verificación antes de presentar.</p>
+    const toolMap = [
+      ["Escribir / redactar", ["ChatGPT", "Claude"]],
+      ["Investigar con fuentes", ["Perplexity", "Gemini"]],
+      ["Consultar TUS documentos", ["NotebookLM", "Vertex AI"]],
+      ["Reuniones / actas", ["Read AI"]],
+      ["Imagen", ["Midjourney", "Firefly"]],
+      ["Video / avatar", ["Runway", "Sora", "HeyGen"]],
+      ["Voz", ["ElevenLabs"]],
+      ["Código", ["Claude Code", "Cursor", "GitHub Copilot"]],
+      ["Automatizar", ["n8n", "Make", "Zapier", "Power Automate"]],
+      ["Construir apps", ["Lovable", "V0", "Replit"]],
+      ["Oficina (docs/hojas)", ["M365 Copilot", "Gemini Workspace", "Notion AI"]]
+    ];
+    const toc = [["g1","Multiplicador"],["g2","IA/ML/DL"],["g3","Gen vs Pred"],["g4","Flujo de datos"],["g5","Tokens & embeddings"],["g6","RAG vs fine-tuning"],["g7","Chatbot→Agente"],["g8","Impacto/Facilidad"],["g9","Riesgo/Autonomía"],["g10","Mapa herramientas"],["g11","Roadmap"],["g12","Automatización"],["g13","Caso obra"],["g14","Caso BIM"],["g15","Caso CV"]];
+    bankShell(`<p class="eyebrow">Manual · Visual</p><h2 class="h2">Gráficas y <span class="grad">mapas</span></h2>
+      <p class="lead mt8">15 visualizaciones didácticas para explicar la IA. Las cifras con ⚠ requieren verificación antes de presentar.</p>
+      <div class="filters no-print mt12">${toc.map(([a,l])=>`<a class="pill" href="#${a}">${l}</a>`).join("")}</div>
 
-      <h3 class="h3 mt24">IA como multiplicador de productividad</h3>
-      <div class="card mt12"><div class="bars">${barsBlock(DB.stats.productividad, "")}</div>
-      <p class="dim mt12">Mismo usuario, distinto nivel de aprovechamiento.</p></div>
+      <h3 class="h3 mt32" id="g1">1 · IA como multiplicador de productividad</h3>
+      <div class="card mt12"><div class="bars">${barsBlock(DB.stats.productividad, "")}</div><p class="dim mt12">Mismo usuario, distinto nivel de aprovechamiento.</p></div>
 
-      <h3 class="h3 mt32">Adopción de IA: el mundo vs. construcción</h3>
-      <div class="card mt12"><div class="bars">${barsBlock(DB.stats.adopcion, "%")}</div></div>
+      <h3 class="h3 mt32" id="g2">2 · IA ⊃ Machine Learning ⊃ Deep Learning</h3>
+      <div class="grid two mt12" style="align-items:center">
+        <div class="venn"><div class="ring r1">IA</div><div class="ring r2">ML</div><div class="ring r3">DL<small>redes profundas</small></div></div>
+        <div><p class="lead">Círculos concéntricos, no cosas distintas: <b>Deep Learning</b> está dentro de <b>ML</b>, que está dentro de <b>IA</b>.</p></div>
+      </div>
 
-      <h3 class="h3 mt32">Chatbot · Asistente · Agente</h3>
+      <h3 class="h3 mt32" id="g3">3 · IA generativa vs. predictiva</h3>
+      <div class="grid two mt12">
+        <div class="card"><span class="kicker">${esc(DB.genVsPred.gen.t)} · crea</span><p>${esc(DB.genVsPred.gen.d)}</p><ul>${DB.genVsPred.gen.ej.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>
+        <div class="card"><span class="kicker" style="color:var(--blue)">${esc(DB.genVsPred.pred.t)} · estima</span><p>${esc(DB.genVsPred.pred.d)}</p><ul>${DB.genVsPred.pred.ej.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g4">4 · Flujo: datos → modelo → respuesta → validación → valor</h3>
+      <div class="card mt12">${aflow([{t:"Datos",s:"docs, fotos, sensores"},{t:"Modelo",s:"procesa/genera"},{t:"Respuesta",s:"borrador"},{t:"Validación humana",s:"revisa y aprueba",hot:true},{t:"Valor",s:"decisión/acción"}])}</div>
+
+      <h3 class="h3 mt32" id="g5">5 · Tokenización y embeddings</h3>
+      <div class="card mt12">
+        <p class="dim" style="font-size:13px">El texto se trocea en <b>tokens</b>…</p>
+        <div class="tok mt8">${"La IA predice el siguiente token".split(" ").map(w=>`<span class="tk">${esc(w)}</span>`).join("")}</div>
+        <p class="dim mt16" style="font-size:13px">…y cada idea se ubica como un <b>vector</b> (embedding); lo parecido queda cerca:</p>
+        <div class="tok mt8"><span class="tk">multa</span><span class="ar" style="color:var(--accent)">≈</span><span class="tk">penalidad</span><span class="vec" style="margin-left:10px">${"".padEnd(6).split("").map(()=>'<i></i>').join("")}</span></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g6">6 · RAG vs. fine-tuning</h3>
+      <div class="grid two mt12">
+        <div class="card"><span class="kicker">RAG · conocimiento</span><p>Recupera TUS documentos y responde con fuente. Rápido de actualizar.</p><p class="mt8 dim">Úsalo para responder sobre normas, BEP, contratos.</p></div>
+        <div class="card"><span class="kicker" style="color:var(--blue)">Fine-tuning · comportamiento</span><p>Reentrena el estilo/tarea. Necesita volumen de datos.</p><p class="mt8 dim">Úsalo para que siempre redacte en tu formato.</p></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g7">7 · Chatbot · Asistente · Agente</h3>
       <div class="grid mt12">${DB.cba.map((c, i) => `<div class="card hover"><div class="num ${["", "blue", "violet"][i]}">${i + 1}</div><h3>${esc(c.t)}</h3><p class="dim">${esc(c.verbo)} — ${esc(c.d)}</p></div>`).join("")}</div>
 
-      <h3 class="h3 mt32">IA generativa vs. predictiva</h3>
-      <div class="grid two mt12">
-        <div class="card"><span class="kicker">${esc(DB.genVsPred.gen.t)}</span><p>${esc(DB.genVsPred.gen.d)}</p><ul>${DB.genVsPred.gen.ej.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>
-        <div class="card"><span class="kicker" style="color:var(--blue)">${esc(DB.genVsPred.pred.t)}</span><p>${esc(DB.genVsPred.pred.d)}</p><ul>${DB.genVsPred.pred.ej.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>
-      </div>
-
-      <h3 class="h3 mt32">Flujo: datos → modelo → output → validación → valor</h3>
-      <div class="process mt12" style="--steps:${DB.flujo.length}">${DB.flujo.map((f, i) => `<div class="step"><span class="s">${i + 1}</span><h4>${esc(f.t)}</h4><p>${esc(f.d)}</p></div>`).join("")}</div>
-
-      <h3 class="h3 mt32">Matriz impacto vs. facilidad</h3>
+      <h3 class="h3 mt32" id="g8">8 · Matriz impacto vs. facilidad</h3>
       <div class="grid two mt12" style="align-items:center">
-        <div class="matrix">
-          <div class="ql"><b>Apuesta grande</b><span>Alto impacto · difícil</span></div>
-          <div class="ql good"><b>Quick wins ✦</b><span>Alto impacto · fácil</span></div>
-          <div class="ql"><b>Evitar</b><span>Bajo impacto · difícil</span></div>
-          <div class="ql"><b>Relleno</b><span>Bajo impacto · fácil</span></div>
-          <div class="axis-x">Facilidad →</div><div class="axis-y">Impacto →</div>
-        </div>
-        <div><p class="lead">El primer piloto vive en <strong>Quick wins</strong>.</p></div>
+        <div class="matrix"><div class="ql"><b>Apuesta grande</b><span>Alto impacto · difícil</span></div><div class="ql good"><b>Quick wins ✦</b><span>Alto impacto · fácil</span></div><div class="ql"><b>Evitar</b><span>Bajo impacto · difícil</span></div><div class="ql"><b>Relleno</b><span>Bajo impacto · fácil</span></div><div class="axis-x">Facilidad →</div><div class="axis-y">Impacto →</div></div>
+        <div><p class="lead">El primer piloto vive en <strong>Quick wins</strong>: alto impacto, baja dificultad.</p></div>
       </div>
 
-      <h3 class="h3 mt32">Escalera de madurez IA</h3>
-      <div class="process mt12" style="--steps:${DB.escalera.length}">${DB.escalera.map(x => `<div class="step"><span class="s">Nivel ${esc(x.n)}</span><h4>${esc(x.t)}</h4><p>${esc(x.d)}</p></div>`).join("")}</div>`);
+      <h3 class="h3 mt32" id="g9">9 · Matriz riesgo vs. autonomía</h3>
+      <div class="grid two mt12" style="align-items:center">
+        <div class="matrix"><div class="ql"><b>Supervisar de cerca</b><span>Alto riesgo · alta autonomía</span></div><div class="ql good"><b>Automatizar ✦</b><span>Bajo riesgo · alta autonomía</span></div><div class="ql"><b>Human-in-the-loop</b><span>Alto riesgo · baja autonomía</span></div><div class="ql"><b>Asistir</b><span>Bajo riesgo · baja autonomía</span></div><div class="axis-x">Autonomía →</div><div class="axis-y">Riesgo →</div></div>
+        <div><p class="lead">A más riesgo, más <strong>human-in-the-loop</strong>. Solo automatiza del todo lo de bajo riesgo.</p></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g10">10 · Mapa de herramientas por tarea</h3>
+      <div class="card mt12"><div class="tmap">${toolMap.map(([task, ts]) => `<div class="row"><b>${esc(task)}</b><div class="chips">${ts.map(t => `<span class="chip" style="padding:4px 10px;font-size:12px">${esc(t)}</span>`).join("")}</div></div>`).join("")}</div></div>
+
+      <h3 class="h3 mt32" id="g11">11 · Roadmap de adopción IA</h3>
+      <div class="card mt12"><p class="kicker">Personal</p>${aflow([{t:"Usar como chat"},{t:"Prompts con criterio"},{t:"Asistentes guardados"},{t:"1 automatización"},{t:"AI-first",hot:true}])}</div>
+      <div class="card mt12"><p class="kicker">Empresa</p>${aflow([{t:"Gobernar datos"},{t:"Quick win medible"},{t:"Piloto 4 sem."},{t:"Escalar lo que probó valor"},{t:"AI-native",hot:true}])}</div>
+
+      <h3 class="h3 mt32" id="g12">12 · Flujo de automatización (n8n / Make / Zapier)</h3>
+      <div class="card mt12">${aflow([{t:"Disparador",s:"correo, formulario, hora"},{t:"IA",s:"clasifica/redacta",hot:true},{t:"Acción",s:"crea tarea / actualiza"},{t:"Notifica",s:"al responsable"},{t:"Aprobación",s:"human-in-the-loop"}])}</div>
+
+      <h3 class="h3 mt32" id="g13">13 · Caso AEC: obra → decisión</h3>
+      <div class="card mt12">${aflow([{t:"Obra",s:"parte diario"},{t:"Datos",s:"digitalizados"},{t:"IA",s:"consolida/analiza",hot:true},{t:"Dashboard",s:"avance, riesgos"},{t:"Decisión",s:"gerencia"}])}</div>
+
+      <h3 class="h3 mt32" id="g14">14 · Caso BIM: documentos → respuesta verificable</h3>
+      <div class="card mt12">${aflow([{t:"Documentos",s:"BEP, normas"},{t:"RAG",s:"recupera",hot:true},{t:"Asistente",s:"responde con cita"},{t:"Respuesta",s:"verificable"},{t:"Acción",s:"checklist"}])}</div>
+
+      <h3 class="h3 mt32" id="g15">15 · Caso Computer Vision: cámara → reporte</h3>
+      <div class="card mt12">${aflow([{t:"Cámara",s:"obra"},{t:"Detección",s:"EPP, grietas",hot:true},{t:"Alerta",s:"evento/zona/hora"},{t:"Responsable",s:"notificado"},{t:"Reporte",s:"evidencia"}])}</div>
+
+      <h3 class="h3 mt32">+ Escalera de madurez IA</h3>
+      <div class="process mt12" style="--steps:${DB.escalera.length}">${DB.escalera.map(x => `<div class="step"><span class="s">Nivel ${esc(x.n)}</span><h4>${esc(x.t)}</h4><p>${esc(x.d)}</p></div>`).join("")}</div>
+
+      <h3 class="h3 mt32">+ Adopción: el mundo vs. construcción</h3>
+      <div class="card mt12"><div class="bars">${barsBlock(DB.stats.adopcion, "%")}</div></div>`);
     animateBars();
   }
   function barsBlock(d, suffix) {
@@ -691,6 +756,41 @@
   }
 
   /* ===================================================================
+     RECURSOS (tips · prompt-patterns · errores · anécdotas · analogías)
+     =================================================================== */
+  function renderRecursos() {
+    const f = state.filters.recursos || (state.filters.recursos = { q: "" });
+    const q = (f.q || "").toLowerCase();
+    const fil = arr => !q ? arr : arr.filter(x => JSON.stringify(x).toLowerCase().includes(q));
+    const tips = fil(DB.tips || []), pats = fil(DB.promptPatterns || []), errs = fil(DB.errores || []), anec = fil(DB.anecdotas || []), anal = fil(DB.analogias || []);
+    const sec = (id, title, n) => `<h3 class="h3 mt32" id="${id}">${title} <span class="dim" style="font-size:.6em">· ${n}</span></h3>`;
+    bankShell(`
+      <p class="eyebrow">Manual · Recursos</p>
+      <h2 class="h2">Tips, trucos y <span class="grad">analogías</span></h2>
+      <p class="lead mt8">${(DB.tips||[]).length} tips · ${(DB.promptPatterns||[]).length} trucos de prompt · ${(DB.errores||[]).length} errores comunes · ${(DB.anecdotas||[]).length} anécdotas · ${(DB.analogias||[]).length} analogías. Usa 🎲 para una tarjeta al azar.</p>
+      <div class="toolbar no-print">
+        <div class="search">⌕ <input id="searchInput" type="text" placeholder="Buscar en recursos…" value="${esc(f.q)}" aria-label="Buscar"></div>
+        <button class="btn sm primary" id="tbRandom">🎲 Recurso al azar</button>
+      </div>
+      <div class="filters no-print">${[["secTips","Tips"],["secPat","Trucos de prompt"],["secErr","Errores"],["secAnec","Anécdotas"],["secAnal","Analogías"]].map(([a,l])=>`<a class="pill" href="#${a}">${l}</a>`).join("")}</div>
+      <div id="recWrap">
+        ${sec("secTips","✦ Tips de productividad", tips.length)}
+        <div class="grid auto mt12">${tips.map(t=>`<div class="card pad-sm hover"><span class="kicker">${esc(t.cat)}</span><h4 style="font-size:16px">${esc(t.t)}</h4><p style="font-size:14px">${esc(t.d)}</p></div>`).join("")||emptyHTML()}</div>
+        ${sec("secPat","⌨ Trucos de prompt engineering", pats.length)}
+        <div class="grid auto mt12">${pats.map(p=>`<div class="card pad-sm hover"><span class="kicker">${esc(p.name)}</span><p style="font-size:14px;color:var(--ink)"><code style="font-family:ui-monospace,monospace;font-size:.92em;color:var(--lav)">${esc(p.pattern)}</code></p><p class="dim mt8" style="font-size:13px">ej: ${esc(p.ej)}</p></div>`).join("")||emptyHTML()}</div>
+        ${sec("secErr","⚠ Errores comunes", errs.length)}
+        <div class="grid auto mt12">${errs.map(e=>`<div class="card pad-sm hover"><p style="color:var(--ink)"><span class="badge danger">error</span> ${esc(e.error)}</p><p class="mt8" style="font-size:14px"><span class="badge green">arréglalo</span> ${esc(e.fix)}</p></div>`).join("")||emptyHTML()}</div>
+        ${sec("secAnec","◑ Anécdotas didácticas", anec.length)}
+        <div class="grid auto mt12">${anec.map(a=>`<article class="item" data-reveal><h4>${esc(a.titulo)}</h4><p class="dim">${esc(a.texto)}</p><button class="btn sm ghost no-print" data-toggle>Ver lección ▾</button><div class="hidden-ans"><p class="callout" style="margin:0">${esc(a.leccion)}</p></div></article>`).join("")||emptyHTML()}</div>
+        ${sec("secAnal","◐ Analogías que se quedan", anal.length)}
+        <div class="grid auto mt12">${anal.map(a=>`<div class="card pad-sm hover"><span class="kicker">${esc(a.c)}</span><h4 style="font-size:16px">${esc(a.t)}</h4><p style="font-size:14px">${esc(a.d)}</p></div>`).join("")||""}</div>
+      </div>`);
+    wireReveal();
+    const si = $("#searchInput"); if (si) si.oninput = () => { f.q = si.value; renderRecursos(); };
+    $("#tbRandom").onclick = () => randomForModule();
+  }
+
+  /* ===================================================================
      COMMAND PALETTE (⌘K)
      =================================================================== */
   function cmdActions() {
@@ -763,11 +863,9 @@
      RANDOM spotlight (fullscreen flashcard)
      =================================================================== */
   function randomForModule() {
-    if (state.mod === "mitos") spotMyth();
-    else if (state.mod === "casos") spotCase();
-    else if (state.mod === "preguntas") spotQuestion();
-    else if (state.mod === "apertura") spotIaOno();
-    else spotQuestion();
+    const f = { mitos: spotMyth, casos: spotCase, preguntas: spotQuestion, apertura: spotIaOno,
+      herramientas: spotTool, recursos: spotResource, biblioteca: spotConcept, mapa: spotConcept }[state.mod] || spotQuestion;
+    f();
   }
   function openSpot(html, onKeyNext) {
     const sp = $("#spotlight");
@@ -828,6 +926,42 @@
       <div class="meta"><span class="badge green">¿IA o no IA?</span></div>
       <p class="q">${esc(c.t)}</p>
       <div class="a"><p style="font-size:26px"><strong>${c.ia ? "✓ Sí es IA" : "✗ No es IA"}</strong></p><p class="mt8 dim">${esc(c.e)}</p></div>`, spotIaOno);
+    $("#x").onclick = closeSpot;
+  }
+  function spotTool() {
+    const t = pick(DB.herramientas);
+    openSpot(`<button class="btn icon close" id="x">×</button>
+      <div class="meta"><span class="badge violet">Herramienta</span><span class="badge gray">${esc(t.cat)}</span>${t.verify ? verifyBadge : ""}</div>
+      <p class="q">${esc(t.name)}</p><p class="mt8 dim" style="font-size:19px">${esc(t.que)}</p>
+      <div class="a"><dl class="kv">
+        <dt>Mejor uso</dt><dd>${esc(t.mejor)}</dd><dt>En AEC</dt><dd>${esc(t.aec)}</dd>
+        <dt>Limitación</dt><dd>${esc(t.limite)}</dd><dt>Alternativa</dt><dd>${esc(t.alt)}</dd></dl></div>`, spotTool);
+    $("#x").onclick = closeSpot;
+  }
+  function spotConcept() {
+    const f = state.filters.biblioteca || {};
+    const pool = (f.cat && f.cat !== "all") ? DB.conceptos.filter(c => c.cat === f.cat) : DB.conceptos;
+    const c = pick(pool.length ? pool : DB.conceptos); const m = catMeta(c.cat);
+    openSpot(`<button class="btn icon close" id="x">×</button>
+      <div class="meta"><span class="badge" style="background:color-mix(in srgb,${m.color} 24%,transparent);color:${m.color}">${m.ico} ${esc(m.label)}</span>${lvlBadge(c.nivel)}</div>
+      <p class="q">${esc(c.term)}</p><p class="mt8 dim" style="font-size:19px">${esc(c.que)}</p>
+      <div class="a"><dl class="kv">
+        <dt>Cómo</dt><dd>${esc(c.como)}</dd><dt>Analogía</dt><dd>${esc(c.analogia)}</dd>
+        <dt>Dato</dt><dd>${esc(c.dato)}</dd><dt>Ejemplo AEC</dt><dd>${esc(c.ejemplo)}</dd></dl>
+        <button class="btn sm mt12" id="spOpen">Abrir ficha completa →</button></div>`, spotConcept);
+    $("#x").onclick = closeSpot;
+    const o = $("#spOpen"); if (o) o.onclick = () => { closeSpot(); openConcept(c.id); };
+  }
+  function spotResource() {
+    const pool = [];
+    (DB.analogias || []).forEach(a => pool.push({ tag: "Analogía", q: a.c, a: `<strong>${esc(a.t)}.</strong> ${esc(a.d)}` }));
+    (DB.anecdotas || []).forEach(a => pool.push({ tag: "Anécdota", q: a.titulo, a: `${esc(a.texto)}<p class="mt8"><span class="badge green">lección</span> ${esc(a.leccion)}</p>` }));
+    (DB.tips || []).forEach(t => pool.push({ tag: "Tip", q: t.t, a: esc(t.d) }));
+    (DB.errores || []).forEach(e => pool.push({ tag: "Error común", q: e.error, a: `<span class="badge green">arréglalo</span> ${esc(e.fix)}` }));
+    const r = pick(pool);
+    openSpot(`<button class="btn icon close" id="x">×</button>
+      <div class="meta"><span class="badge violet">${esc(r.tag)}</span></div>
+      <p class="q">${esc(r.q)}</p><div class="a"><p>${r.a}</p></div>`, spotResource);
     $("#x").onclick = closeSpot;
   }
 
@@ -952,6 +1086,14 @@
   function openHelp() { $("#help").classList.add("on"); }
 
   function toggleFs() { if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.(); }
+  function toggleFacilitator(on) {
+    state.facilitador = (on === undefined) ? !state.facilitador : on;
+    store.set("facilitador", state.facilitador);
+    const b = $("#facBtn"); if (b) b.setAttribute("aria-pressed", state.facilitador);
+    $("#timerPanel") && $("#timerPanel").classList.toggle("on", state.facilitador);
+    $("#scorePanel") && $("#scorePanel").classList.toggle("on", state.facilitador);
+    const n = $("#notes"); if (n) n.classList.toggle("on", state.facilitador && (DB.modules.find(m => m.id === state.mod) || {}).kind === "deck");
+  }
 
   function updateProgress() {
     const bar = $("#progress > span"); if (!bar) return;
@@ -998,10 +1140,11 @@
     else if (k === "n") { const n = $("#notes"); if (n) n.classList.toggle("on"); }
     else if (k === "r") randomForModule();
     else if (k === "t") $("#timerPanel").classList.toggle("on");
-    else if (k === "p") $("#scorePanel").classList.toggle("on");
+    else if (k === "p" || k === "s") $("#scorePanel").classList.toggle("on");
+    else if (k === "m") $("#app").classList.toggle(window.innerWidth <= 720 ? "nav-open" : "nav-collapsed");
     else if (k === "f") toggleFs();
     else if (k === "d") applyTheme(state.theme === "dark" ? "light" : "dark", true);
-    else if (k === "?") openHelp();
+    else if (k === "h" || k === "?") openHelp();
   }
 
   /* ===================================================================
@@ -1033,18 +1176,31 @@
     $("#mode").addEventListener("click", e => { if (e.target.id === "mode") e.currentTarget.classList.remove("on"); });
     $("#helpPanel").innerHTML = `
       <div class="panel-head"><h3>Atajos de teclado</h3><button class="btn icon" onclick="document.getElementById('help').classList.remove('on')">×</button></div>
-      ${[["⌘K / Ctrl K", "Buscar concepto / ir a"], ["← / →", "Slide anterior / siguiente"], ["Espacio", "Avanzar"], ["Inicio / Fin", "Primer / último slide"], ["G", "Índice de slides"], ["N", "Notas del ponente"], ["R", "Tarjeta aleatoria"], ["T", "Temporizador"], ["P", "Marcador por equipos"], ["F", "Pantalla completa"], ["D", "Tema claro/oscuro"], ["Esc", "Cerrar overlays"]]
+      ${[["⌘K / Ctrl K", "Buscar concepto / ir a"], ["← / →", "Slide anterior / siguiente"], ["Espacio", "Avanzar"], ["Inicio / Fin", "Primer / último slide"], ["G", "Índice de slides"], ["N", "Notas del ponente"], ["R", "Tarjeta aleatoria"], ["T", "Temporizador"], ["S / P", "Marcador por equipos"], ["M", "Mostrar/ocultar menú"], ["F", "Pantalla completa"], ["D", "Tema claro/oscuro"], ["H / ?", "Ayuda"], ["Esc", "Cerrar overlays"]]
         .map(([k, d]) => `<div class="shortcut-row"><span>${esc(d)}</span><span class="kbd">${esc(k)}</span></div>`).join("")}
       <p class="dim mt16" style="font-size:13px">Las cifras marcadas con ⚠ <em>verificar</em> tienen fuente externa: confírmalas antes de presentar.</p>`;
   }
 
+  function validateData() {
+    const need = ["modules", "conceptos", "conceptCats", "rutas", "slides", "mitos", "casos", "herramientas", "preguntas", "dinamicas", "prodAreas", "tips"];
+    const missing = need.filter(k => !DB[k] || (Array.isArray(DB[k]) && !DB[k].length));
+    if (missing.length) console.warn("[Manual IA] datos faltantes:", missing.join(", "));
+    return missing;
+  }
   function init() {
+    const missing = validateData();
+    if (missing.includes("modules") || missing.includes("conceptos")) {
+      document.getElementById("view") && (document.getElementById("view").innerHTML =
+        `<div class="wrap"><div class="empty"><div class="big">⚠</div>No se cargaron todos los datos (${esc(missing.join(", "))}).<br>Verifica que <code>data/*.js</code> existan.</div></div>`);
+      return;
+    }
     applyTheme(state.theme, false);
     renderSidebar(); renderTopbar(); buildOverlays(); renderTimer(); renderScore();
     document.addEventListener("keydown", onKey);
     window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (id && id !== state.mod && DB.modules.some(m => m.id === id)) gotoModule(id); });
-    const start = location.hash.slice(1);
+    const start = location.hash.slice(1) || store.get("mod", "");
     gotoModule(DB.modules.some(m => m.id === start) ? start : "biblioteca");
+    if (state.facilitador) toggleFacilitator(true);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
