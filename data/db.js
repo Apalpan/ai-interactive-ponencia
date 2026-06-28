@@ -8,10 +8,10 @@ window.DB = window.DB || {};
 
 /* Marca / créditos -------------------------------------------------- */
 window.DB.brand = {
-  title: "IA Interactiva",
-  subtitle: "Sistema de ponencia · GEN+ / AECODE",
+  title: "Manual de IA",
+  subtitle: "Aprendizaje avanzado · AECODE",
   author: "Alejandro Palpan",
-  url: "genplusdesign.com · aecode.ai"
+  url: "aecode.ai · genplusdesign.com"
 };
 
 /* Frases centrales (rotan en apertura / cierre) --------------------- */
@@ -99,8 +99,12 @@ window.DB.glosario = [
 
 /* Registro de módulos (orden de navegación) ------------------------- */
 window.DB.modules = [
+  { id: "biblioteca",    label: "Biblioteca de conceptos", ico: "❖", group: "Aprende", kind: "library" },
+  { id: "rutas",         label: "Rutas de aprendizaje", ico: "◷", group: "Aprende", kind: "rutas" },
+  { id: "mapa",          label: "Mapa de conceptos",   ico: "⊞", group: "Aprende", kind: "map" },
   { id: "apertura",      label: "Apertura",            ico: "▶", group: "Presentación", kind: "deck" },
   { id: "fundamentos",   label: "Fundamentos de IA",   ico: "◆", group: "Presentación", kind: "deck" },
+  { id: "paradigmas",    label: "Paradigmas de IA",    ico: "◎", group: "Presentación", kind: "deck" },
   { id: "aec-intro",     label: "IA aplicada a AEC",   ico: "⌂", group: "Presentación", kind: "deck" },
   { id: "cierre",        label: "Cierre y framework",  ico: "✦", group: "Presentación", kind: "deck" },
   { id: "mitos",         label: "Mitos y realidades",  ico: "⚡", group: "Bancos", kind: "bank" },
@@ -115,9 +119,12 @@ window.DB.modules = [
 /* Recorridos (modos de sesión) -------------------------------------- */
 window.DB.tracks = {
   rapida: { label: "Presentación rápida · 20 min",
-    steps: ["apertura","fundamentos","aec-intro","cierre"],
-    note: "Apertura → fundamentos esenciales → 2-3 casos AEC → framework y CTA." },
+    steps: ["apertura","fundamentos","paradigmas","aec-intro","cierre"],
+    note: "Apertura → fundamentos → paradigmas (gen/pred/agéntica) → AEC → framework y CTA." },
   taller: { label: "Taller completo · 60–90 min",
-    steps: ["apertura","fundamentos","mitos","productividad","aec-intro","herramientas","dinamicas","casos","preguntas","cierre"],
-    note: "Recorrido completo con dinámicas, bancos y cierre. Usa el temporizador y el marcador por equipos." }
+    steps: ["apertura","fundamentos","paradigmas","mitos","productividad","aec-intro","herramientas","dinamicas","casos","preguntas","cierre"],
+    note: "Recorrido completo con dinámicas, bancos y cierre. Usa el temporizador y el marcador por equipos." },
+  curso: { label: "Curso · manual de aprendizaje",
+    steps: ["biblioteca","rutas","fundamentos","paradigmas","aec-intro","mapa"],
+    note: "Recorrido de estudio: biblioteca de conceptos + rutas académicas + decks de apoyo." }
 };

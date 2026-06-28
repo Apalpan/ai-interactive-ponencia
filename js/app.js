@@ -23,16 +23,20 @@
   const lvlBadge = (n) => `<span class="badge lvl-${esc(n)}">${esc(n)}</span>`;
   const verifyBadge = `<span class="verify" title="Dato con fuente externa: confírmalo antes de presentar">⚠ verificar</span>`;
   const counts = {
+    biblioteca: DB.conceptos.length, rutas: DB.rutas.length,
     mitos: DB.mitos.length, casos: DB.casos.length, herramientas: DB.herramientas.length,
     preguntas: DB.preguntas.length, productividad: DB.prodAreas.length, dinamicas: DB.dinamicas.length
   };
+  const conceptById = id => DB.conceptos.find(c => c.id === id);
+  const catMeta = id => DB.conceptCats.find(c => c.id === id) || { label: id, ico: "◆", color: "var(--violet)" };
 
   /* ---------- state ---------- */
   const state = {
     mod: null,
     deckIndex: {},
     track: store.get("track", null),
-    theme: store.get("theme", "light"),
+    theme: store.get("theme", "dark"),
+    cmd: { open: false, items: [], sel: 0 },
     filters: {}, // per-bank
     teams: store.get("teams", [
       { name: "Equipo Verde", color: "#00a85a", pts: 0 },
@@ -65,9 +69,10 @@
       </div>`).join("");
     $("#sidebar").innerHTML = `
       <div class="brand">
-        <div class="mark">IA</div>
+        <div class="mark"><img src="assets/brand/aecode-isotipo.png" alt="AECODE" loading="eager"></div>
         <div class="name">${esc(DB.brand.title)}<small>${esc(DB.brand.subtitle)}</small></div>
       </div>
+      <div class="kbar"><button id="cmdkBtn" title="Buscar / ir a (Ctrl/⌘ K)">⌕ <span>Buscar concepto o sección…</span> <span class="kbd">⌘K</span></button></div>
       <div class="nav" id="nav">${nav}</div>
       <div class="sidebar-foot">
         <button class="btn sm" id="modeBtn" title="Elegir recorrido">◷ Modo</button>
@@ -75,6 +80,7 @@
         <button class="btn icon sm" id="helpBtn" title="Atajos de teclado">?</button>
       </div>`;
     $("#nav").addEventListener("click", e => { const b = e.target.closest(".nav-item"); if (b) gotoModule(b.dataset.mod); });
+    $("#cmdkBtn").addEventListener("mousedown", e => { e.preventDefault(); openCmd(); });
     $("#modeBtn").onclick = openMode;
     $("#themeBtn").onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark", true);
     $("#helpBtn").onclick = () => $("#help").classList.add("on");
@@ -290,7 +296,8 @@
      =================================================================== */
   function bankShell(inner) { $("#view").innerHTML = `<div class="scroll"><div class="wrap">${inner}</div></div>`; }
   function renderBank(id) {
-    ({ mitos: renderMitos, casos: renderCasos, herramientas: renderTools, preguntas: renderPreguntas,
+    ({ biblioteca: renderBiblioteca, rutas: renderRutas, mapa: renderMapa,
+       mitos: renderMitos, casos: renderCasos, herramientas: renderTools, preguntas: renderPreguntas,
        productividad: renderProd, dinamicas: renderDinamicas, graficas: renderGraficas }[id] || (() => bankShell("<div class='empty'>—</div>")))();
     updateProgress();
   }
@@ -555,6 +562,177 @@
       <div class="bv">${esc(x.v)}${esc(suffix)}</div></div>`).join("");
   }
 
+  /* ===================================================================
+     BIBLIOTECA DE CONCEPTOS (cross-linked)
+     =================================================================== */
+  function renderBiblioteca() {
+    const f = state.filters.biblioteca || (state.filters.biblioteca = { q: "", cat: "all", nivel: "all" });
+    bankShell(`
+      <p class="eyebrow">Manual · Biblioteca</p>
+      <h2 class="h2">Biblioteca de <span class="grad">conceptos de IA</span></h2>
+      <p class="lead mt8">${DB.conceptos.length} conceptos clave que se cruzan entre sí. Cada uno trae qué es, cómo funciona, una analogía, un dato clave, un tip y un ejemplo en AEC. Toca un concepto para abrirlo y saltar a sus conceptos relacionados.</p>
+      <div class="toolbar no-print">
+        <div class="search">⌕ <input id="searchInput" type="text" placeholder="Buscar concepto…" value="${esc(f.q)}" aria-label="Buscar"></div>
+        <select class="select" id="nivelSel">${["all","basico","intermedio","avanzado"].map(n => `<option value="${n}" ${f.nivel === n ? "selected" : ""}>${n === "all" ? "Todo nivel" : n}</option>`).join("")}</select>
+        <button class="btn sm" id="cmdkOpen" title="Buscar (⌘K)">⌘K Buscar</button>
+      </div>
+      <div class="filters" id="catFilters">
+        <button class="pill ${f.cat === "all" ? "active" : ""}" data-cat="all">Todas</button>
+        ${DB.conceptCats.map(c => `<button class="pill ${f.cat === c.id ? "active" : ""}" data-cat="${c.id}">${c.ico} ${esc(c.label)}</button>`).join("")}
+      </div>
+      <div class="count-note no-print mt8" id="countNote"></div>
+      <div class="grid auto mt16" id="list"></div>`);
+    const data = applyFilters(DB.conceptos);
+    $("#list").innerHTML = data.length ? data.map(conceptCard).join("") : emptyHTML();
+    setCount(data.length, DB.conceptos.length);
+    wireReveal();
+    const si = $("#searchInput"); if (si) si.oninput = () => { f.q = si.value; const d = applyFilters(DB.conceptos); $("#list").innerHTML = d.length ? d.map(conceptCard).join("") : emptyHTML(); setCount(d.length, DB.conceptos.length); };
+    $("#nivelSel").onchange = e => { f.nivel = e.target.value; renderBiblioteca(); };
+    $("#catFilters").onclick = e => { const b = e.target.closest(".pill"); if (b) { f.cat = b.dataset.cat; renderBiblioteca(); } };
+    $("#cmdkOpen").onclick = openCmd;
+  }
+  function conceptCard(c) {
+    const m = catMeta(c.cat);
+    return `<button class="concept-card" data-concept="${c.id}">
+      <div class="top"><span class="badge" style="background:color-mix(in srgb,${m.color} 24%,transparent);color:${m.color}">${m.ico} ${esc(m.label)}</span>${lvlBadge(c.nivel)}</div>
+      <div class="ct">${esc(c.term)}</div>
+      <div class="cd">${esc(c.que)}</div>
+      <div class="crel">↔ ${c.rel.length} conceptos relacionados</div>
+    </button>`;
+  }
+  function openConcept(id) {
+    const c = conceptById(id); if (!c) return;
+    state.mod = "biblioteca"; markSidebar();
+    location.hash = "biblioteca";
+    $("#crumb").innerHTML = `Biblioteca · <small>${esc(c.term)}</small>`;
+    bankShell(conceptDetailHTML(c));
+    wireReveal();
+    $("#view .scroll")?.scrollTo(0, 0);
+    updateProgress();
+  }
+  function conceptDetailHTML(c) {
+    const m = catMeta(c.cat);
+    const rel = c.rel.map(conceptById).filter(Boolean);
+    const sameCat = DB.conceptos.filter(x => x.cat === c.cat && x.id !== c.id).slice(0, 6);
+    const sec = (cls, lbl, txt, extra = "") => `<div class="sec ${cls}"><div class="lbl">${lbl} ${extra}</div><p>${esc(txt)}</p></div>`;
+    return `
+      <button class="btn sm ghost no-print mt8" data-back="biblioteca">‹ Biblioteca</button>
+      <div class="mt16" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="badge" style="background:color-mix(in srgb,${m.color} 24%,transparent);color:${m.color}">${m.ico} ${esc(m.label)}</span>${lvlBadge(c.nivel)}
+      </div>
+      <h2 class="h1 mt12" style="font-size:clamp(30px,4.4vw,52px)">${esc(c.term)}</h2>
+      <p class="lead mt12">${esc(c.que)}</p>
+      <div class="concept-detail mt24">
+        <div class="grid two">
+          ${sec("como", "⚙ Cómo funciona", c.como)}
+          ${sec("analogy", "◑ Analogía", c.analogia)}
+        </div>
+        <div class="grid two">
+          ${sec("dato", "★ Dato clave", c.dato, c.datoVerify ? verifyBadge : "")}
+          ${sec("tip", "✦ Tip / truco", c.tip)}
+        </div>
+        ${sec("ej", "⌂ Ejemplo en AEC", c.ejemplo)}
+      </div>
+      ${rel.length ? `<h3 class="h3 mt32">Conceptos relacionados</h3>
+        <div class="crosslinks mt12">${rel.map(r => `<button class="chip tap" data-concept="${r.id}">${esc(r.term)} →</button>`).join("")}</div>` : ""}
+      ${sameCat.length ? `<h3 class="h3 mt32">Más en ${esc(m.label)}</h3>
+        <div class="crosslinks mt12">${sameCat.map(r => `<button class="chip tap" data-concept="${r.id}">${esc(r.term)}</button>`).join("")}</div>` : ""}`;
+  }
+
+  /* ===================================================================
+     RUTAS DE APRENDIZAJE (sesiones académicas)
+     =================================================================== */
+  function renderRutas() {
+    bankShell(`
+      <p class="eyebrow">Manual · Academia</p>
+      <h2 class="h2">Rutas de <span class="grad">aprendizaje</span></h2>
+      <p class="lead mt8">${DB.rutas.length} sesiones con estructura académica: presentación, motivación, conceptos clave (enlazados a la biblioteca), proyecto y estrategia, proceso convencional vs. propuesto, y key takeaway. Toca una sesión para abrirla.</p>
+      <div class="grid mt16" style="grid-template-columns:1fr;gap:12px" id="list">${DB.rutas.map((r, i) => rutaCard(r, i === 0)).join("")}</div>`);
+    wireReveal();
+  }
+  function rutaCard(r, open) {
+    const concepts = r.conceptos.map(conceptById).filter(Boolean);
+    const row = (k, v) => `<div class="rstep"><div class="rk">${k}</div><div class="rv">${v}</div></div>`;
+    return `<div class="ruta ${open ? "open" : ""}">
+      <button class="rh" data-ruta="${r.id}">
+        <div class="rnum">${esc(r.n)}</div>
+        <div><div class="rt">${esc(r.titulo)}</div><div class="rtt">${esc(r.subtitulo)} · ${esc(r.nivel)} · ⏱ ${esc(r.dur)}</div></div>
+        <div class="rcaret">▾</div>
+      </button>
+      <div class="rbody">
+        ${row("Presentación", esc(r.presentacion))}
+        ${row("Motivación", esc(r.motivacion))}
+        ${row("Conceptos clave", `<div class="crosslinks">${concepts.map(c => `<button class="chip tap" data-concept="${c.id}">${esc(c.term)}</button>`).join("")}</div>`)}
+        ${row("Proyecto y estrategia", `<ol style="margin:0;padding-left:18px">${r.estrategia.map(s => `<li>${esc(s)}</li>`).join("")}</ol>`)}
+        ${row("Convencional", esc(r.convencional))}
+        ${row("Propuesto", `${esc(r.propuesto)} <span class="dim">→ <b style="color:var(--ink)">${esc(r.ventaja)}</b></span>`)}
+        ${row("Key takeaway", `<div class="callout" style="margin:0">${esc(r.takeaway)}</div>`)}
+        ${row("Ideas", `<ul style="margin:0;padding-left:18px">${r.ideas.map(s => `<li>${esc(s)}</li>`).join("")}</ul>`)}
+      </div>
+    </div>`;
+  }
+
+  /* ===================================================================
+     MAPA DE CONCEPTOS
+     =================================================================== */
+  function renderMapa() {
+    bankShell(`
+      <p class="eyebrow">Manual · Mapa</p>
+      <h2 class="h2">Mapa de <span class="grad">conceptos</span></h2>
+      <p class="lead mt8">El territorio completo en una vista: ${DB.conceptos.length} conceptos en ${DB.conceptCats.length} categorías. Toca una categoría para filtrarla en la biblioteca, o un concepto para abrirlo.</p>
+      <div class="grid auto mt20" id="list">${DB.conceptCats.map(cat => {
+        const items = DB.conceptos.filter(c => c.cat === cat.id);
+        return `<div class="card">
+          <button class="kicker" data-catbib="${cat.id}" style="background:none;border:0;padding:0;cursor:pointer;color:${cat.color}">${cat.ico} ${esc(cat.label)} · ${items.length}</button>
+          <div class="crosslinks mt8">${items.map(c => `<button class="chip tap" data-concept="${c.id}">${esc(c.term)}</button>`).join("")}</div>
+        </div>`;
+      }).join("")}</div>`);
+    wireReveal();
+  }
+
+  /* ===================================================================
+     COMMAND PALETTE (⌘K)
+     =================================================================== */
+  function cmdActions() {
+    return [
+      { ico: "🎲", label: "Tarjeta aleatoria", sub: "según el módulo", kw: "random azar", run: () => { closeCmd(); randomForModule(); } },
+      { ico: "◷", label: "Temporizador", sub: "actividades", kw: "timer reloj", run: () => { closeCmd(); $("#timerPanel").classList.add("on"); } },
+      { ico: "🏆", label: "Marcador por equipos", sub: "puntos", kw: "score equipos", run: () => { closeCmd(); $("#scorePanel").classList.add("on"); } },
+      { ico: "☾", label: "Cambiar tema claro/oscuro", sub: "", kw: "theme dark light tema", run: () => { closeCmd(); applyTheme(state.theme === "dark" ? "light" : "dark", true); } },
+      { ico: "⤢", label: "Pantalla completa", sub: "", kw: "fullscreen", run: () => { closeCmd(); toggleFs(); } },
+      { ico: "◷", label: "Elegir recorrido / modo", sub: "rápida · taller · curso", kw: "modo track", run: () => { closeCmd(); openMode(); } }
+    ];
+  }
+  function cmdBuild(q) {
+    q = (q || "").trim().toLowerCase();
+    const match = (s) => !q || s.toLowerCase().includes(q);
+    const out = [];
+    DB.modules.forEach(m => { if (match(m.label) || match(m.group)) out.push({ type: "Ir a", ico: m.ico, label: m.label, sub: m.group, run: () => { closeCmd(); gotoModule(m.id); } }); });
+    DB.conceptos.forEach(c => { const cm = catMeta(c.cat); if (match(c.term) || match(cm.label) || match(c.que)) out.push({ type: "Conceptos", ico: "❖", label: c.term, sub: cm.label, run: () => { closeCmd(); openConcept(c.id); } }); });
+    cmdActions().forEach(a => { if (match(a.label) || match(a.kw)) out.push({ type: "Acciones", ico: a.ico, label: a.label, sub: a.sub, run: a.run }); });
+    return out;
+  }
+  function cmdRender() {
+    const items = state.cmd.items;
+    if (!items.length) { $("#cmdList").innerHTML = `<div class="kempty">Sin resultados</div>`; return; }
+    let html = "", lastType = "";
+    items.forEach((it, i) => {
+      if (it.type !== lastType) { html += `<div class="kgroup">${esc(it.type)}</div>`; lastType = it.type; }
+      html += `<div class="kitem" role="option" data-i="${i}" aria-selected="${i === state.cmd.sel}">
+        <span class="kico">${it.ico}</span><span>${esc(it.label)}</span>${it.sub ? `<span class="ksub">${esc(it.sub)}</span>` : ""}</div>`;
+    });
+    const list = $("#cmdList"); list.innerHTML = html;
+    const sel = list.querySelector('[aria-selected="true"]'); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "nearest" });
+  }
+  function cmdFilter(q) { state.cmd.items = cmdBuild(q).slice(0, 60); state.cmd.sel = 0; cmdRender(); }
+  function openCmd() {
+    state.cmd.open = true; $("#cmd").classList.add("on");
+    const inp = $("#cmdInput"); inp.value = ""; cmdFilter("");
+    setTimeout(() => inp.focus(), 20);
+  }
+  function closeCmd() { state.cmd.open = false; $("#cmd").classList.remove("on"); }
+  function cmdMove(d) { const n = state.cmd.items.length; if (!n) return; state.cmd.sel = (state.cmd.sel + d + n) % n; cmdRender(); }
+
   /* ---------- shared bank helpers ---------- */
   function emptyHTML() { return `<div class="empty" style="grid-column:1/-1"><div class="big">🔍</div>Sin resultados. Ajusta la búsqueda o los filtros.</div>`; }
   function wireReveal() {
@@ -568,6 +746,14 @@
         t.textContent = t.textContent.replace(/[▾▴]/, on ? "▴" : "▾");
         return;
       }
+      const cc = e.target.closest("[data-concept]");
+      if (cc) { openConcept(cc.dataset.concept); return; }
+      const cb = e.target.closest("[data-catbib]");
+      if (cb) { state.filters.biblioteca = { q: "", cat: cb.dataset.catbib }; gotoModule("biblioteca"); return; }
+      const rt = e.target.closest("[data-ruta]");
+      if (rt) { const r = rt.closest(".ruta"); r.classList.toggle("open"); return; }
+      const bk = e.target.closest("[data-back]");
+      if (bk) { gotoModule(bk.dataset.back); return; }
       const g = e.target.closest("[data-goto]");
       if (g) gotoModule(g.dataset.goto);
     });
@@ -782,6 +968,16 @@
   function onKey(e) {
     const tag = (e.target.tagName || "").toLowerCase();
     const typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
+    // ⌘K / Ctrl+K toggles the command palette from anywhere
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); state.cmd.open ? closeCmd() : openCmd(); return; }
+    // command palette navigation has top priority
+    if (state.cmd.open) {
+      if (e.key === "Escape") { closeCmd(); return; }
+      if (e.key === "ArrowDown") { cmdMove(1); e.preventDefault(); return; }
+      if (e.key === "ArrowUp") { cmdMove(-1); e.preventDefault(); return; }
+      if (e.key === "Enter") { state.cmd.items[state.cmd.sel]?.run(); e.preventDefault(); return; }
+      return; // let other keys type into the input
+    }
     // spotlight has priority
     if ($("#spotlight").classList.contains("on")) {
       if (e.key === "Escape") return closeSpot();
@@ -814,6 +1010,11 @@
   function buildOverlays() {
     const ov = document.createElement("div");
     ov.innerHTML = `
+      <div class="cmd" id="cmd"><div class="panel-k">
+        <div class="kin">⌕ <input id="cmdInput" type="text" placeholder="Buscar concepto, sección o acción…" aria-label="Buscar"></div>
+        <div class="klist" id="cmdList" role="listbox"></div>
+        <div class="kfoot"><span><span class="kbd">↑↓</span> navegar</span><span><span class="kbd">↵</span> abrir</span><span><span class="kbd">esc</span> cerrar</span></div>
+      </div></div>
       <div class="spotlight" id="spotlight"><div class="flash"></div></div>
       <div class="overlay" id="overview"><div class="panel" id="ovPanel"></div></div>
       <div class="overlay" id="mode"><div class="panel" id="modePanel" style="max-width:760px"></div></div>
@@ -822,13 +1023,17 @@
       <div class="timer-panel" id="timerPanel"></div>
       <div class="score-panel" id="scorePanel"></div>`;
     document.body.appendChild(ov);
+    $("#cmdInput").addEventListener("input", e => cmdFilter(e.target.value));
+    $("#cmdList").addEventListener("mousemove", e => { const it = e.target.closest(".kitem"); if (it) { state.cmd.sel = +it.dataset.i; cmdRender(); } });
+    $("#cmdList").addEventListener("click", e => { const it = e.target.closest(".kitem"); if (it) state.cmd.items[+it.dataset.i]?.run(); });
+    $("#cmd").addEventListener("mousedown", e => { if (e.target.id === "cmd") closeCmd(); });
     $("#timerFab").onclick = () => $("#timerPanel").classList.toggle("on");
     $("#help").addEventListener("click", e => { if (e.target.id === "help") e.currentTarget.classList.remove("on"); });
     $("#overview").addEventListener("click", e => { if (e.target.id === "overview") e.currentTarget.classList.remove("on"); });
     $("#mode").addEventListener("click", e => { if (e.target.id === "mode") e.currentTarget.classList.remove("on"); });
     $("#helpPanel").innerHTML = `
       <div class="panel-head"><h3>Atajos de teclado</h3><button class="btn icon" onclick="document.getElementById('help').classList.remove('on')">×</button></div>
-      ${[["← / →", "Slide anterior / siguiente"], ["Espacio", "Avanzar"], ["Inicio / Fin", "Primer / último slide"], ["G", "Índice de slides"], ["N", "Notas del ponente"], ["R", "Tarjeta aleatoria"], ["T", "Temporizador"], ["P", "Marcador por equipos"], ["F", "Pantalla completa"], ["D", "Tema claro/oscuro"], ["Esc", "Cerrar overlays"]]
+      ${[["⌘K / Ctrl K", "Buscar concepto / ir a"], ["← / →", "Slide anterior / siguiente"], ["Espacio", "Avanzar"], ["Inicio / Fin", "Primer / último slide"], ["G", "Índice de slides"], ["N", "Notas del ponente"], ["R", "Tarjeta aleatoria"], ["T", "Temporizador"], ["P", "Marcador por equipos"], ["F", "Pantalla completa"], ["D", "Tema claro/oscuro"], ["Esc", "Cerrar overlays"]]
         .map(([k, d]) => `<div class="shortcut-row"><span>${esc(d)}</span><span class="kbd">${esc(k)}</span></div>`).join("")}
       <p class="dim mt16" style="font-size:13px">Las cifras marcadas con ⚠ <em>verificar</em> tienen fuente externa: confírmalas antes de presentar.</p>`;
   }
@@ -839,7 +1044,7 @@
     document.addEventListener("keydown", onKey);
     window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (id && id !== state.mod && DB.modules.some(m => m.id === id)) gotoModule(id); });
     const start = location.hash.slice(1);
-    gotoModule(DB.modules.some(m => m.id === start) ? start : "apertura");
+    gotoModule(DB.modules.some(m => m.id === start) ? start : "biblioteca");
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
