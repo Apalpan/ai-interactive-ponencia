@@ -458,6 +458,11 @@ a { color: inherit; text-decoration: none; }
   .card,.item,.step,.concept-card,.ruta,.timer-panel,.score-panel,.panel,.cmd .panel-k{ background: var(--surface); }
 }
 
+/* ---------- Concept detail nav (interactividad) ---------- */
+.cdetail-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.cdetail-nav .copy-ok{color:#fff;opacity:0;transition:opacity .2s;margin-left:2px;}
+.cdetail-nav .copy-ok.on{opacity:1;}
+
 /* ---------- Prompts / Papers / Glosario100 (módulos añadidos) ---------- */
 .prompt-box{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.55;
   background:var(--card-2,var(--card));border:1px solid var(--line);border-radius:var(--r-sm,12px);

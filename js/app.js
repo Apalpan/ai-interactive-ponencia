@@ -124,7 +124,7 @@
   function moduleOrder() { return state.track ? DB.tracks[state.track].steps : DB.modules.map(m => m.id); }
   function gotoModule(id, slideIdx) {
     const m = DB.modules.find(x => x.id === id); if (!m) return;
-    state.mod = id; state._relist = null; markSidebar(); setCrumb();
+    state.mod = id; state._relist = null; state.conceptOpen = null; markSidebar(); setCrumb();
     $("#app").classList.remove("nav-open");
     location.hash = id; store.set("mod", id);
     if (m.kind === "deck") renderDeck(id, slideIdx || 0);
@@ -333,7 +333,8 @@
   function applyFilters(arr) {
     const f = state.filters[state.mod] || {};
     let r = arr;
-    if (f.cat && f.cat !== "all") r = r.filter(x => x.cat === f.cat);
+    if (f.cat === "__nuevo") r = r.filter(x => x.nuevo);
+    else if (f.cat && f.cat !== "all") r = r.filter(x => x.cat === f.cat);
     if (f.nivel && f.nivel !== "all") r = r.filter(x => x.nivel === f.nivel);
     if (f.q && f.q.trim()) { const q = f.q.toLowerCase(); r = r.filter(x => JSON.stringify(x).toLowerCase().includes(q)); }
     return r;
@@ -634,6 +635,7 @@
      BIBLIOTECA DE CONCEPTOS (cross-linked)
      =================================================================== */
   function renderBiblioteca() {
+    state.conceptOpen = null;
     const f = state.filters.biblioteca || (state.filters.biblioteca = { q: "", cat: "all", nivel: "all" });
     bankShell(`
       <p class="eyebrow">Manual · Biblioteca</p>
@@ -646,6 +648,7 @@
       </div>
       <div class="filters" id="catFilters">
         <button class="pill ${f.cat === "all" ? "active" : ""}" data-cat="all">Todas</button>
+        <button class="pill ${f.cat === "__nuevo" ? "active" : ""}" data-cat="__nuevo" style="border-color:color-mix(in srgb,var(--green) 50%,var(--line))">✨ Nuevos · ${DB.conceptos.filter(x => x.nuevo).length}</button>
         ${DB.conceptCats.map(c => `<button class="pill ${f.cat === c.id ? "active" : ""}" data-cat="${c.id}">${c.ico} ${esc(c.label)}</button>`).join("")}
       </div>
       <div class="count-note no-print mt8" id="countNote"></div>
@@ -662,19 +665,32 @@
   function conceptCard(c) {
     const m = catMeta(c.cat);
     return `<button class="concept-card" data-concept="${c.id}">
-      <div class="top"><span class="badge" style="background:color-mix(in srgb,${m.color} 24%,transparent);color:${m.color}">${m.ico} ${esc(m.label)}</span>${lvlBadge(c.nivel)}</div>
+      <div class="top"><span class="badge" style="background:color-mix(in srgb,${m.color} 24%,transparent);color:${m.color}">${m.ico} ${esc(m.label)}</span>${c.nuevo ? `<span class="badge green">✨ nuevo</span>` : ""}${lvlBadge(c.nivel)}</div>
       <div class="ct">${esc(c.term)}</div>
       <div class="cd">${esc(c.que)}</div>
       <div class="crel">↔ ${c.rel.length} conceptos relacionados</div>
     </button>`;
   }
+  function conceptNav(c) {
+    const fl = applyFilters(DB.conceptos);
+    const list = (fl.some(x => x.id === c.id) && fl.length > 1) ? fl : DB.conceptos;
+    const i = list.findIndex(x => x.id === c.id);
+    return { list, i, prev: list[(i - 1 + list.length) % list.length], next: list[(i + 1) % list.length] };
+  }
+  function conceptText(c) {
+    return `${c.term}\n\n¿Qué es? ${c.que}\nCómo funciona: ${c.como}\nAnalogía: ${c.analogia}\nDato clave: ${c.dato}\nTip: ${c.tip}\nEjemplo en AEC: ${c.ejemplo}`;
+  }
   function openConcept(id) {
     const c = conceptById(id); if (!c) return;
-    state.mod = "biblioteca"; markSidebar();
+    state.mod = "biblioteca"; state.conceptOpen = id; markSidebar();
     location.hash = "biblioteca";
     $("#crumb").innerHTML = `Biblioteca · <small>${esc(c.term)}</small>`;
     bankShell(conceptDetailHTML(c));
     wireReveal();
+    const nav = conceptNav(c);
+    $("#cPrev") && ($("#cPrev").onclick = () => openConcept(nav.prev.id));
+    $("#cNext") && ($("#cNext").onclick = () => openConcept(nav.next.id));
+    $("#cCopy") && ($("#cCopy").onclick = () => copyText(conceptText(c), document.getElementById("cOk")));
     $("#view .scroll")?.scrollTo(0, 0);
     updateProgress();
   }
@@ -682,11 +698,19 @@
     const m = catMeta(c.cat);
     const rel = c.rel.map(conceptById).filter(Boolean);
     const sameCat = DB.conceptos.filter(x => x.cat === c.cat && x.id !== c.id).slice(0, 6);
+    const nav = conceptNav(c);
     const sec = (cls, lbl, txt, extra = "") => `<div class="sec ${cls}"><div class="lbl">${lbl} ${extra}</div><p>${esc(txt)}</p></div>`;
     return `
-      <button class="btn sm ghost no-print mt8" data-back="biblioteca">‹ Biblioteca</button>
+      <div class="cdetail-nav no-print">
+        <button class="btn sm ghost" data-back="biblioteca">‹ Biblioteca</button>
+        <span style="flex:1"></span>
+        <button class="btn icon sm" id="cPrev" title="Concepto anterior (←)">‹</button>
+        <span class="dim" style="font-size:13px;min-width:54px;text-align:center">${nav.i + 1} / ${nav.list.length}</span>
+        <button class="btn icon sm" id="cNext" title="Concepto siguiente (→)">›</button>
+        <button class="btn sm" id="cCopy" title="Copiar concepto">⧉ Copiar <span class="copy-ok" id="cOk">✓</span></button>
+      </div>
       <div class="mt16" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <span class="badge" style="background:color-mix(in srgb,${m.color} 24%,transparent);color:${m.color}">${m.ico} ${esc(m.label)}</span>${lvlBadge(c.nivel)}
+        <span class="badge" style="background:color-mix(in srgb,${m.color} 24%,transparent);color:${m.color}">${m.ico} ${esc(m.label)}</span>${c.nuevo ? `<span class="badge green">✨ nuevo</span>` : ""}${lvlBadge(c.nivel)}
       </div>
       <h2 class="h1 mt12" style="font-size:clamp(30px,4.4vw,52px)">${esc(c.term)}</h2>
       <p class="lead mt12">${esc(c.que)}</p>
@@ -1286,6 +1310,11 @@
     if (typing) return;
     const k = e.key.toLowerCase();
     const inDeck = (DB.modules.find(x => x.id === state.mod) || {}).kind === "deck";
+    if (state.conceptOpen && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      const c = conceptById(state.conceptOpen);
+      if (c) { const nav = conceptNav(c); openConcept(e.key === "ArrowRight" ? nav.next.id : nav.prev.id); }
+      e.preventDefault(); return;
+    }
     if (e.key === "ArrowRight") { inDeck ? deckGo(1) : advanceModule(1); e.preventDefault(); }
     else if (e.key === "ArrowLeft") { inDeck ? deckGo(-1) : advanceModule(-1); e.preventDefault(); }
     else if (e.key === " ") { if (inDeck) { deckGo(1); e.preventDefault(); } }
