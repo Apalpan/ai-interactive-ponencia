@@ -458,6 +458,28 @@ a { color: inherit; text-decoration: none; }
   .card,.item,.step,.concept-card,.ruta,.timer-panel,.score-panel,.panel,.cmd .panel-k{ background: var(--surface); }
 }
 
+/* ---------- Prompts / Papers / Glosario100 (módulos añadidos) ---------- */
+.prompt-box{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.55;
+  background:var(--card-2,var(--card));border:1px solid var(--line);border-radius:var(--r-sm,12px);
+  padding:13px 14px;margin:12px 0 10px;color:var(--ink);max-height:280px;overflow:auto;}
+.prompt-box .ph{color:var(--violet);font-weight:700;}
+.copy-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.copy-ok{color:var(--green);font-size:13px;font-weight:600;opacity:0;transition:opacity .2s;}
+.copy-ok.on{opacity:1;}
+.paper-card .metric{font-size:26px;font-weight:800;line-height:1.05;
+  background:var(--grad,linear-gradient(90deg,var(--violet),var(--green)));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.paper-card .metric-lbl{font-size:12.5px;color:var(--muted);margin-top:2px;}
+.paper-card .src{font-size:12px;color:var(--muted);}
+.lvl-head{display:flex;align-items:baseline;gap:10px;margin:30px 0 4px;padding-top:6px;border-top:1px solid var(--line);}
+.lvl-head .lvl-no{font-size:13px;font-weight:800;color:var(--violet);background:var(--chip-bg);border:1px solid var(--line);border-radius:999px;padding:3px 11px;white-space:nowrap;}
+.lvl-head h3{font-size:19px;margin:0;}
+.lvl-head .lvl-sub{font-size:13px;color:var(--muted);}
+.g100-card .ang{margin-top:10px;}
+.g100-card .ang .t{font-size:12px;font-weight:700;color:var(--lav);text-transform:uppercase;letter-spacing:.04em;}
+.g100-card .ang p{margin:2px 0 0;font-size:14px;color:var(--ink);}
+.g100-card .brand-tag{display:inline-block;margin-top:10px;font-size:11.5px;font-weight:700;color:var(--green);
+  background:var(--chip-bg);border:1px solid var(--line);border-radius:999px;padding:3px 10px;}
+
 /* ---------- Print ---------- */
 @media print {
   body,.app{position:static;overflow:visible;display:block;height:auto;background:#fff;}

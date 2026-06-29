@@ -25,7 +25,9 @@
   const counts = {
     biblioteca: DB.conceptos.length, rutas: DB.rutas.length, recursos: (DB.tips || []).length + (DB.promptPatterns || []).length,
     mitos: DB.mitos.length, casos: DB.casos.length, herramientas: DB.herramientas.length,
-    preguntas: DB.preguntas.length, productividad: DB.prodAreas.length, dinamicas: DB.dinamicas.length
+    preguntas: DB.preguntas.length, productividad: DB.prodAreas.length, dinamicas: DB.dinamicas.length,
+    prompts: (DB.learningPrompts || []).length, papers: (DB.papers || []).length,
+    glosario100: (DB.glosario100 || []).reduce((n, l) => n + l.concepts.length, 0)
   };
   const conceptById = id => DB.conceptos.find(c => c.id === id);
   const catMeta = id => DB.conceptCats.find(c => c.id === id) || { label: id, ico: "◆", color: "var(--violet)" };
@@ -302,7 +304,8 @@
   function renderBank(id) {
     ({ biblioteca: renderBiblioteca, rutas: renderRutas, mapa: renderMapa, recursos: renderRecursos,
        mitos: renderMitos, casos: renderCasos, herramientas: renderTools, preguntas: renderPreguntas,
-       productividad: renderProd, dinamicas: renderDinamicas, graficas: renderGraficas }[id] || (() => bankShell("<div class='empty'>—</div>")))();
+       productividad: renderProd, dinamicas: renderDinamicas, graficas: renderGraficas,
+       prompts: renderPrompts, glosario100: renderGlosario100, papers: renderPapers }[id] || (() => bankShell("<div class='empty'>—</div>")))();
     updateProgress();
   }
   function toolbar(opts) {
@@ -790,6 +793,114 @@
     $("#tbRandom").onclick = () => randomForModule();
   }
 
+  /* ---------- Arsenal de prompts ---------- */
+  function renderPrompts() {
+    const cats = DB.promptCats || [...new Set(DB.learningPrompts.map(p => p.cat))];
+    bankShell(`<p class="eyebrow">Aprende · Prompts</p><h2 class="h2">Arsenal de <span class="grad">prompts</span></h2>
+      <p class="lead mt8">${DB.learningPrompts.length} meta-prompts para aprender y trabajar cualquier tema con IA al extremo — Feynman, active recall, primeros principios, socrático y más. Reemplaza <code>{tema}</code> por tu tema y copia.</p>
+      ${toolbar({ placeholder: "Buscar prompt…", cats, random: "Prompt al azar" })}
+      <div class="grid auto mt16" id="list"></div>`);
+    state._relist = () => { const d = applyFilters(DB.learningPrompts); $("#list").innerHTML = d.length ? d.map(promptCard).join("") : emptyHTML(); setCount(d.length, DB.learningPrompts.length); wirePromptCopy(); };
+    state._relist();
+    wireToolbar(renderPrompts, {});
+  }
+  function promptCard(p) {
+    const body = esc(p.prompt).replace(/\{tema\}/g, '<span class="ph">{tema}</span>');
+    return `<article class="item">
+      <div class="top"><span class="badge violet">${esc(p.cat)}</span></div>
+      <h4>${esc(p.titulo)}</h4>
+      <p class="dim">${esc(p.que)}</p>
+      <p class="dim" style="color:var(--ink)"><strong>Cuándo:</strong> ${esc(p.cuando)}</p>
+      <div class="prompt-box">${body}</div>
+      <div class="copy-row no-print"><button class="btn sm primary" data-copy="${esc(p.id)}">⧉ Copiar prompt</button><span class="copy-ok" id="ok-${esc(p.id)}">✓ Copiado</span></div>
+    </article>`;
+  }
+  function copyText(txt, okEl) {
+    const done = () => { if (okEl) { okEl.classList.add("on"); setTimeout(() => okEl.classList.remove("on"), 1500); } };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, done);
+    else { const ta = document.createElement("textarea"); ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} ta.remove(); done(); }
+  }
+  function wirePromptCopy() {
+    $$("#list [data-copy]").forEach(b => b.onclick = () => {
+      const p = DB.learningPrompts.find(x => x.id === b.dataset.copy); if (!p) return;
+      copyText(p.prompt, document.getElementById("ok-" + p.id));
+    });
+  }
+
+  /* ---------- Investigación IA + AEC (papers) ---------- */
+  function renderPapers() {
+    const cats = DB.paperCats || [...new Set(DB.papers.map(p => p.cat))];
+    bankShell(`<p class="eyebrow">Banco · Investigación</p><h2 class="h2">Investigación <span class="grad">IA + AEC</span></h2>
+      <p class="lead mt8">${DB.papers.length} papers y reportes (2022–2026) con su dato citable, extraídos y curados. Úsalos para dar respaldo académico a la ponencia. Las cifras ⚠ tienen fuente externa: confírmalas.</p>
+      ${toolbar({ placeholder: "Buscar investigación…", cats, random: "Paper al azar" })}
+      <div class="grid auto mt16" id="list"></div>`);
+    state._relist = () => { const d = applyFilters(DB.papers); $("#list").innerHTML = d.length ? d.map(paperCard).join("") : emptyHTML(); setCount(d.length, DB.papers.length); };
+    state._relist();
+    wireReveal(); wireToolbar(renderPapers, {});
+  }
+  function paperCard(p) {
+    return `<article class="item paper-card" data-reveal>
+      <div class="top"><span class="badge blue">${esc(p.cat)}</span>${p.aec ? `<span class="badge green">AEC</span>` : ""}${p.verify ? verifyBadge : ""}</div>
+      <div class="metric">${esc(p.metric)}</div>
+      <div class="metric-lbl">${esc(p.metricLbl)}</div>
+      <h4 class="mt12">${esc(p.titulo)}</h4>
+      <p class="src">${esc(p.autores)} · ${esc(p.anio)} · ${esc(p.fuente)}</p>
+      <p class="dim mt8">${esc(p.hallazgo)}</p>
+      <button class="btn sm ghost no-print" data-toggle>Ver detalle ▾</button>
+      <div class="hidden-ans"><p class="callout" style="margin:0">${esc(p.detalle)}</p></div>
+    </article>`;
+  }
+
+  /* ---------- 100 conceptos de startup ---------- */
+  function renderGlosario100() {
+    const f = state.filters.glosario100 || (state.filters.glosario100 = { q: "", lvl: "all" });
+    const levels = DB.glosario100 || [];
+    const total = levels.reduce((n, l) => n + l.concepts.length, 0);
+    const lvlOpts = `<select class="select" id="lvlSel">
+      ${["all", ...levels.map(l => String(l.no))].map(v => `<option value="${v}" ${f.lvl === v ? "selected" : ""}>${v === "all" ? "Todos los niveles" : "Nivel " + v}</option>`).join("")}</select>`;
+    bankShell(`<p class="eyebrow">Startup & negocio · Glosario</p><h2 class="h2">100 conceptos de <span class="grad">startup</span></h2>
+      <p class="lead mt8">De cero a experto en ${total} conceptos (10 niveles). Cada uno con cómo funciona, una analogía y un ejemplo real de las startups más grandes y de AECODE. Toca una tarjeta para ver los 3 ángulos.</p>
+      <div class="toolbar no-print">
+        <div class="search">⌕ <input id="searchInput" type="text" placeholder="Buscar concepto…" value="${esc(f.q)}" aria-label="Buscar"></div>
+        ${lvlOpts}
+        <button class="btn sm primary" id="tbRandom">🎲 Concepto al azar</button>
+      </div>
+      <div class="count-note no-print mt8" id="countNote"></div>
+      <div id="g100wrap"></div>`);
+    const paint = () => {
+      const q = (f.q || "").toLowerCase();
+      let shown = 0, html = "";
+      levels.forEach(l => {
+        if (f.lvl !== "all" && String(l.no) !== f.lvl) return;
+        const cs = l.concepts.filter(c => !q || (c.name + " " + c.sub + " " + c.como + " " + c.analogia + " " + c.ejemplo + " " + c.brand).toLowerCase().includes(q));
+        if (!cs.length) return;
+        shown += cs.length;
+        html += `<div class="lvl-head"><span class="lvl-no">Nivel ${l.no}</span><h3>${esc(l.tema)}</h3></div>
+          <p class="dim" style="margin:2px 0 0">${esc(l.sub)}</p>
+          <div class="grid auto mt12">${cs.map(g100Card).join("")}</div>`;
+      });
+      $("#g100wrap").innerHTML = html || emptyHTML();
+      setCount(shown, total);
+      wireReveal();
+    };
+    paint();
+    const si = $("#searchInput"); if (si) si.oninput = () => { f.q = si.value; paint(); };
+    $("#lvlSel").onchange = e => { f.lvl = e.target.value; paint(); };
+    $("#tbRandom").onclick = () => randomForModule();
+  }
+  function g100Card(c) {
+    return `<article class="item g100-card" data-reveal>
+      <h4>${esc(c.name)}</h4>
+      <p class="dim" style="color:var(--lav)">${esc(c.sub)}</p>
+      <button class="btn sm ghost no-print" data-toggle>Ver los 3 ángulos ▾</button>
+      <div class="hidden-ans">
+        <div class="ang"><div class="t">① Cómo funciona</div><p>${c.como}</p></div>
+        <div class="ang"><div class="t">② Analogía</div><p>${c.analogia}</p></div>
+        <div class="ang"><div class="t">③ Ejemplo real</div><p>${c.ejemplo}</p></div>
+        ${c.brand ? `<span class="brand-tag">◆ ${esc(c.brand)}</span>` : ""}
+      </div></article>`;
+  }
+
   /* ===================================================================
      COMMAND PALETTE (⌘K)
      =================================================================== */
@@ -809,6 +920,9 @@
     const out = [];
     DB.modules.forEach(m => { if (match(m.label) || match(m.group)) out.push({ type: "Ir a", ico: m.ico, label: m.label, sub: m.group, run: () => { closeCmd(); gotoModule(m.id); } }); });
     DB.conceptos.forEach(c => { const cm = catMeta(c.cat); if (match(c.term) || match(cm.label) || match(c.que)) out.push({ type: "Conceptos", ico: "❖", label: c.term, sub: cm.label, run: () => { closeCmd(); openConcept(c.id); } }); });
+    (DB.learningPrompts || []).forEach(p => { if (match(p.titulo) || match(p.cat) || match(p.que)) out.push({ type: "Prompts", ico: "⌨", label: p.titulo, sub: p.cat, run: () => { closeCmd(); state.filters.prompts = { q: p.titulo, cat: "all", nivel: "all" }; gotoModule("prompts"); } }); });
+    (DB.glosario100 || []).forEach(l => l.concepts.forEach(c => { if (match(c.name) || match(c.sub)) out.push({ type: "100 conceptos", ico: "◫", label: c.name, sub: "Nivel " + l.no + " · " + l.tema, run: () => { closeCmd(); state.filters.glosario100 = { q: c.name, lvl: "all" }; gotoModule("glosario100"); } }); }));
+    (DB.papers || []).forEach(p => { if (match(p.titulo) || match(p.cat) || match(p.metricLbl)) out.push({ type: "Investigación", ico: "▣", label: p.titulo, sub: p.cat, run: () => { closeCmd(); state.filters.papers = { q: p.titulo, cat: "all", nivel: "all" }; gotoModule("papers"); } }); });
     cmdActions().forEach(a => { if (match(a.label) || match(a.kw)) out.push({ type: "Acciones", ico: a.ico, label: a.label, sub: a.sub, run: a.run }); });
     return out;
   }
@@ -864,7 +978,8 @@
      =================================================================== */
   function randomForModule() {
     const f = { mitos: spotMyth, casos: spotCase, preguntas: spotQuestion, apertura: spotIaOno,
-      herramientas: spotTool, recursos: spotResource, biblioteca: spotConcept, mapa: spotConcept }[state.mod] || spotQuestion;
+      herramientas: spotTool, recursos: spotResource, biblioteca: spotConcept, mapa: spotConcept,
+      prompts: spotPrompt, papers: spotPaper, glosario100: spotConcept100 }[state.mod] || spotQuestion;
     f();
   }
   function openSpot(html, onKeyNext) {
@@ -962,6 +1077,46 @@
     openSpot(`<button class="btn icon close" id="x">×</button>
       <div class="meta"><span class="badge violet">${esc(r.tag)}</span></div>
       <p class="q">${esc(r.q)}</p><div class="a"><p>${r.a}</p></div>`, spotResource);
+    $("#x").onclick = closeSpot;
+  }
+  function spotPrompt() {
+    const f = state.filters.prompts || {};
+    const pool = (f.cat && f.cat !== "all") ? DB.learningPrompts.filter(p => p.cat === f.cat) : DB.learningPrompts;
+    const p = pick(pool.length ? pool : DB.learningPrompts);
+    const body = esc(p.prompt).replace(/\{tema\}/g, '<span class="ph">{tema}</span>');
+    openSpot(`<button class="btn icon close" id="x">×</button>
+      <div class="meta"><span class="badge violet">${esc(p.cat)}</span></div>
+      <p class="q">${esc(p.titulo)}</p><p class="mt8 dim" style="font-size:18px">${esc(p.que)}</p>
+      <div class="a"><div class="prompt-box">${body}</div>
+        <div class="copy-row"><button class="btn sm primary" id="spCopy">⧉ Copiar prompt</button><span class="copy-ok" id="spOk">✓ Copiado</span></div></div>`, spotPrompt);
+    $("#x").onclick = closeSpot;
+    const cp = $("#spCopy"); if (cp) cp.onclick = () => copyText(p.prompt, document.getElementById("spOk"));
+  }
+  function spotPaper() {
+    const f = state.filters.papers || {};
+    const pool = (f.cat && f.cat !== "all") ? DB.papers.filter(p => p.cat === f.cat) : DB.papers;
+    const p = pick(pool.length ? pool : DB.papers);
+    openSpot(`<button class="btn icon close" id="x">×</button>
+      <div class="meta"><span class="badge blue">${esc(p.cat)}</span>${p.aec ? `<span class="badge green">AEC</span>` : ""}${p.verify ? verifyBadge : ""}</div>
+      <p class="q" style="font-size:34px"><span class="grad">${esc(p.metric)}</span></p>
+      <p class="mt8 dim" style="font-size:18px">${esc(p.metricLbl)}</p>
+      <div class="a"><p style="font-size:17px;color:var(--ink)">${esc(p.titulo)}</p>
+        <p class="dim mt8">${esc(p.hallazgo)}</p>
+        <p class="dim mt8" style="font-size:13px">${esc(p.autores)} · ${esc(p.anio)} · ${esc(p.fuente)}</p></div>`, spotPaper);
+    $("#x").onclick = closeSpot;
+  }
+  function spotConcept100() {
+    const f = state.filters.glosario100 || {};
+    let pool = [];
+    (DB.glosario100 || []).forEach(l => { if (f.lvl && f.lvl !== "all" && String(l.no) !== f.lvl) return; l.concepts.forEach(c => pool.push(Object.assign({ _lvl: l.no, _tema: l.tema }, c))); });
+    if (!pool.length) (DB.glosario100 || []).forEach(l => l.concepts.forEach(c => pool.push(Object.assign({ _lvl: l.no, _tema: l.tema }, c))));
+    const c = pick(pool);
+    openSpot(`<button class="btn icon close" id="x">×</button>
+      <div class="meta"><span class="badge violet">Nivel ${esc(c._lvl)} · ${esc(c._tema)}</span></div>
+      <p class="q">${esc(c.name)}</p><p class="mt8 dim" style="font-size:19px">${esc(c.sub)}</p>
+      <div class="a"><dl class="kv">
+        <dt>Cómo funciona</dt><dd>${c.como}</dd><dt>Analogía</dt><dd>${c.analogia}</dd>
+        <dt>Ejemplo real</dt><dd>${c.ejemplo}${c.brand ? ` <span class="brand-tag">◆ ${esc(c.brand)}</span>` : ""}</dd></dl></div>`, spotConcept100);
     $("#x").onclick = closeSpot;
   }
 

@@ -37,13 +37,13 @@ window.DB.stats = {
     { l: "Usan IA generativa (empresa)", v: 72, src: "McKinsey 2025", verify: true },
     { l: "Experimenta con agentes", v: 62, src: "McKinsey 2025", verify: true },
     { l: "Escala agentes a producción", v: 23, src: "McKinsey 2025", verify: true },
-    { l: "Construcción usa IA regularmente", v: 12, src: "Datagrid AECO 2025", verify: true }
+    { l: "Construcción usa IA regularmente", v: 12, src: "RICS 2025", verify: true }
   ],
   hook: [
-    { big: "92%", lbl: "de proyectos de construcción termina con sobrecostos (prom. +28%)", src: "Project Control Academy / Grattan 2024-25", verify: true },
-    { big: "96%", lbl: "de la data que genera una obra no se usa", src: "Klutch AI 2025", verify: true },
-    { big: "14 h", lbl: "/semana pierde un profesional AEC en buscar info y retrabajo", src: "PMI", verify: true },
-    { big: "12%", lbl: "del sector construcción usa IA de forma regular", src: "Datagrid AECO 2025", verify: true }
+    { big: "92%", lbl: "de proyectos de construcción termina con sobrecostos (prom. +28%)", src: "Project Control Academy / Grattan 2025", verify: true },
+    { big: "96%", lbl: "de la data que genera una obra nunca se usa", src: "FMI / Autodesk 2025", verify: true },
+    { big: "84,8%", lbl: "de exposición a la IA en arquitectura e ingeniería", src: "Anthropic Economic Index 2025", verify: true },
+    { big: "12%", lbl: "del sector construcción usa IA de forma regular", src: "RICS 2025", verify: true }
   ]
 };
 
@@ -101,16 +101,20 @@ window.DB.glosario = [
 window.DB.modules = [
   { id: "biblioteca",    label: "Biblioteca de conceptos", ico: "❖", group: "Aprende", kind: "library" },
   { id: "rutas",         label: "Rutas de aprendizaje", ico: "◷", group: "Aprende", kind: "rutas" },
+  { id: "prompts",       label: "Arsenal de prompts",  ico: "⌨", group: "Aprende", kind: "prompts" },
   { id: "mapa",          label: "Mapa de conceptos",   ico: "⊞", group: "Aprende", kind: "map" },
   { id: "recursos",      label: "Tips & recursos",     ico: "✦", group: "Aprende", kind: "recursos" },
+  { id: "glosario100",   label: "100 conceptos startup", ico: "◫", group: "Startup & negocio", kind: "glosario100" },
   { id: "apertura",      label: "Apertura",            ico: "▶", group: "Presentación", kind: "deck" },
   { id: "fundamentos",   label: "Fundamentos de IA",   ico: "◆", group: "Presentación", kind: "deck" },
   { id: "paradigmas",    label: "Paradigmas de IA",    ico: "◎", group: "Presentación", kind: "deck" },
+  { id: "estado-ia",     label: "Estado de la IA 2026",ico: "◉", group: "Presentación", kind: "deck" },
   { id: "aec-intro",     label: "IA aplicada a AEC",   ico: "⌂", group: "Presentación", kind: "deck" },
   { id: "cierre",        label: "Cierre y framework",  ico: "✦", group: "Presentación", kind: "deck" },
   { id: "mitos",         label: "Mitos y realidades",  ico: "⚡", group: "Bancos", kind: "bank" },
   { id: "casos",         label: "Casos prácticos",     ico: "▤", group: "Bancos", kind: "bank" },
   { id: "herramientas",  label: "Herramientas IA",     ico: "✚", group: "Bancos", kind: "bank" },
+  { id: "papers",        label: "Investigación IA+AEC",ico: "▣", group: "Bancos", kind: "papers" },
   { id: "preguntas",     label: "Banco de preguntas",  ico: "?", group: "Bancos", kind: "bank" },
   { id: "productividad", label: "Productividad",       ico: "↑", group: "Bancos", kind: "bank" },
   { id: "dinamicas",     label: "Dinámicas grupales",  ico: "◎", group: "Taller", kind: "bank" },
@@ -120,12 +124,12 @@ window.DB.modules = [
 /* Recorridos (modos de sesión) -------------------------------------- */
 window.DB.tracks = {
   rapida: { label: "Presentación rápida · 20 min",
-    steps: ["apertura","fundamentos","paradigmas","aec-intro","cierre"],
-    note: "Apertura → fundamentos → paradigmas (gen/pred/agéntica) → AEC → framework y CTA." },
+    steps: ["apertura","fundamentos","paradigmas","estado-ia","aec-intro","cierre"],
+    note: "Apertura → fundamentos → paradigmas → estado 2026 → AEC → framework y CTA." },
   taller: { label: "Taller completo · 60–90 min",
-    steps: ["apertura","fundamentos","paradigmas","mitos","productividad","aec-intro","herramientas","dinamicas","casos","preguntas","cierre"],
-    note: "Recorrido completo con dinámicas, bancos y cierre. Usa el temporizador y el marcador por equipos." },
+    steps: ["apertura","fundamentos","paradigmas","estado-ia","mitos","prompts","productividad","aec-intro","papers","herramientas","dinamicas","casos","preguntas","cierre"],
+    note: "Recorrido completo con estado de la IA, prompts, dinámicas, investigación y bancos. Usa el temporizador y el marcador." },
   curso: { label: "Curso · manual de aprendizaje",
-    steps: ["biblioteca","rutas","fundamentos","paradigmas","aec-intro","mapa"],
-    note: "Recorrido de estudio: biblioteca de conceptos + rutas académicas + decks de apoyo." }
+    steps: ["biblioteca","rutas","prompts","fundamentos","paradigmas","estado-ia","aec-intro","glosario100","papers","mapa"],
+    note: "Recorrido de estudio: conceptos + prompts + rutas + estado 2026 + 100 conceptos startup + investigación." }
 };
