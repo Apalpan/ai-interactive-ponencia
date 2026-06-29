@@ -102,6 +102,7 @@ window.DB.modules = [
   { id: "biblioteca",    label: "Biblioteca de conceptos", ico: "❖", group: "Aprende", kind: "library" },
   { id: "rutas",         label: "Rutas de aprendizaje", ico: "◷", group: "Aprende", kind: "rutas" },
   { id: "prompts",       label: "Arsenal de prompts",  ico: "⌨", group: "Aprende", kind: "prompts" },
+  { id: "flashcards",    label: "Flashcards",          ico: "▦", group: "Aprende", kind: "flashcards" },
   { id: "mapa",          label: "Mapa de conceptos",   ico: "⊞", group: "Aprende", kind: "map" },
   { id: "recursos",      label: "Tips & recursos",     ico: "✦", group: "Aprende", kind: "recursos" },
   { id: "glosario100",   label: "100 conceptos startup", ico: "◫", group: "Startup & negocio", kind: "glosario100" },
@@ -115,6 +116,7 @@ window.DB.modules = [
   { id: "casos",         label: "Casos prácticos",     ico: "▤", group: "Bancos", kind: "bank" },
   { id: "herramientas",  label: "Herramientas IA",     ico: "✚", group: "Bancos", kind: "bank" },
   { id: "papers",        label: "Investigación IA+AEC",ico: "▣", group: "Bancos", kind: "papers" },
+  { id: "automatizaciones", label: "Automatización & agentes", ico: "⟳", group: "Bancos", kind: "automatizaciones" },
   { id: "preguntas",     label: "Banco de preguntas",  ico: "?", group: "Bancos", kind: "bank" },
   { id: "productividad", label: "Productividad",       ico: "↑", group: "Bancos", kind: "bank" },
   { id: "dinamicas",     label: "Dinámicas grupales",  ico: "◎", group: "Taller", kind: "bank" },
@@ -130,6 +132,9 @@ window.DB.tracks = {
     steps: ["apertura","fundamentos","paradigmas","estado-ia","mitos","prompts","productividad","aec-intro","papers","herramientas","dinamicas","casos","preguntas","cierre"],
     note: "Recorrido completo con estado de la IA, prompts, dinámicas, investigación y bancos. Usa el temporizador y el marcador." },
   curso: { label: "Curso · manual de aprendizaje",
-    steps: ["biblioteca","rutas","prompts","fundamentos","paradigmas","estado-ia","aec-intro","glosario100","papers","mapa"],
-    note: "Recorrido de estudio: conceptos + prompts + rutas + estado 2026 + 100 conceptos startup + investigación." }
+    steps: ["biblioteca","rutas","prompts","flashcards","fundamentos","paradigmas","estado-ia","aec-intro","automatizaciones","glosario100","papers","mapa"],
+    note: "Recorrido de estudio: conceptos + prompts + flashcards + rutas + estado 2026 + automatización + investigación." },
+  diplomado: { label: "Diplomado IA-AEC · 12 rutas",
+    steps: ["rutas","biblioteca","prompts","flashcards","papers","automatizaciones","preguntas","mapa"],
+    note: "Alineado al diplomado AECODE (100 h): 12 rutas, biblioteca, prompts, flashcards, investigación, automatización y banco de preguntas." }
 };

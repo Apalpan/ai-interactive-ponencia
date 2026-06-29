@@ -27,7 +27,8 @@
     mitos: DB.mitos.length, casos: DB.casos.length, herramientas: DB.herramientas.length,
     preguntas: DB.preguntas.length, productividad: DB.prodAreas.length, dinamicas: DB.dinamicas.length,
     prompts: (DB.learningPrompts || []).length, papers: (DB.papers || []).length,
-    glosario100: (DB.glosario100 || []).reduce((n, l) => n + l.concepts.length, 0)
+    glosario100: (DB.glosario100 || []).reduce((n, l) => n + l.concepts.length, 0),
+    flashcards: (DB.flashcards || []).length, automatizaciones: (DB.automatizaciones || []).length
   };
   const conceptById = id => DB.conceptos.find(c => c.id === id);
   const catMeta = id => DB.conceptCats.find(c => c.id === id) || { label: id, ico: "◆", color: "var(--violet)" };
@@ -305,7 +306,8 @@
     ({ biblioteca: renderBiblioteca, rutas: renderRutas, mapa: renderMapa, recursos: renderRecursos,
        mitos: renderMitos, casos: renderCasos, herramientas: renderTools, preguntas: renderPreguntas,
        productividad: renderProd, dinamicas: renderDinamicas, graficas: renderGraficas,
-       prompts: renderPrompts, glosario100: renderGlosario100, papers: renderPapers }[id] || (() => bankShell("<div class='empty'>—</div>")))();
+       prompts: renderPrompts, glosario100: renderGlosario100, papers: renderPapers,
+       flashcards: renderFlashcards, automatizaciones: renderAutomatizaciones }[id] || (() => bankShell("<div class='empty'>—</div>")))();
     updateProgress();
   }
   function toolbar(opts) {
@@ -546,9 +548,10 @@
       ["Construir apps", ["Lovable", "V0", "Replit"]],
       ["Oficina (docs/hojas)", ["M365 Copilot", "Gemini Workspace", "Notion AI"]]
     ];
-    const toc = [["g1","Multiplicador"],["g2","IA/ML/DL"],["g3","Gen vs Pred"],["g4","Flujo de datos"],["g5","Tokens & embeddings"],["g6","RAG vs fine-tuning"],["g7","Chatbot→Agente"],["g8","Impacto/Facilidad"],["g9","Riesgo/Autonomía"],["g10","Mapa herramientas"],["g11","Roadmap"],["g12","Automatización"],["g13","Caso obra"],["g14","Caso BIM"],["g15","Caso CV"]];
+    const toc = [["g1","Multiplicador"],["g2","IA/ML/DL"],["g3","Gen vs Pred"],["g4","Flujo de datos"],["g5","Tokens & embeddings"],["g6","RAG vs fine-tuning"],["g7","Chatbot→Agente"],["g8","Impacto/Facilidad"],["g9","Riesgo/Autonomía"],["g10","Mapa herramientas"],["g11","Roadmap"],["g12","Automatización"],["g13","Caso obra"],["g14","Caso BIM"],["g15","Caso CV"],["g16","Tipos de ML"],["g17","Ciclo ML"],["g18","Pipeline de datos"],["g19","Tareas de visión"],["g20","Matriz de confusión"],["g21","Anatomía del agente"],["g22","MCP vs A2A"],["g23","Vibe→Engineering"],["g24","Espectro dev"],["g25","Flujo RAG documental"],["g26","Embudo adopción"],["g27","Velocidad adopción"],["g28","Brecha AEC"],["g29","Plataformas automatización"],["g30","Roadmap diplomado"]];
+    const dipMods = (DB.rutas || []).map(r => r.titulo);
     bankShell(`<p class="eyebrow">Manual · Visual</p><h2 class="h2">Gráficas y <span class="grad">mapas</span></h2>
-      <p class="lead mt8">15 visualizaciones didácticas para explicar la IA. Las cifras con ⚠ requieren verificación antes de presentar.</p>
+      <p class="lead mt8">30 visualizaciones didácticas e interactivas para explicar la IA y el diplomado. Las cifras con ⚠ requieren verificación antes de presentar.</p>
       <div class="filters no-print mt12">${toc.map(([a,l])=>`<a class="pill" href="#${a}">${l}</a>`).join("")}</div>
 
       <h3 class="h3 mt32" id="g1">1 · IA como multiplicador de productividad</h3>
@@ -616,6 +619,70 @@
 
       <h3 class="h3 mt32" id="g15">15 · Caso Computer Vision: cámara → reporte</h3>
       <div class="card mt12">${aflow([{t:"Cámara",s:"obra"},{t:"Detección",s:"EPP, grietas",hot:true},{t:"Alerta",s:"evento/zona/hora"},{t:"Responsable",s:"notificado"},{t:"Reporte",s:"evidencia"}])}</div>
+
+      <h3 class="h3 mt32" id="g16">16 · Tipos de Machine Learning</h3>
+      <div class="grid mt12">
+        <div class="card hover"><span class="kicker">Supervisado</span><p>Aprende de ejemplos etiquetados. Clasifica o predice un valor.</p><p class="dim mt8">Ej.: estado de obra, costo estimado.</p></div>
+        <div class="card hover"><span class="kicker" style="color:var(--blue)">No supervisado</span><p>Encuentra patrones sin etiquetas: agrupa o detecta anomalías.</p><p class="dim mt8">Ej.: segmentar proyectos similares.</p></div>
+        <div class="card hover"><span class="kicker" style="color:var(--green)">Por refuerzo</span><p>Aprende por prueba y error maximizando una recompensa.</p><p class="dim mt8">Ej.: optimizar secuencia de tareas.</p></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g17">17 · Ciclo de un proyecto de ML</h3>
+      <div class="card mt12">${aflow([{t:"Problema",s:"y métrica"},{t:"Datos",s:"limpieza"},{t:"Features",s:"variables útiles",hot:true},{t:"Modelo",s:"entrenar"},{t:"Evaluar",s:"train/val/test"},{t:"Desplegar",s:"y monitorear"}])}</div>
+
+      <h3 class="h3 mt32" id="g18">18 · Pipeline de datos (DAG)</h3>
+      <div class="card mt12">${aflow([{t:"Ingesta",s:"sensores/Excel"},{t:"Limpieza",s:"normalizar"},{t:"Transformación",s:"features",hot:true},{t:"Modelo",s:"predice"},{t:"Salida",s:"dashboard"}])}</div>
+
+      <h3 class="h3 mt32" id="g19">19 · Tareas de Computer Vision</h3>
+      <div class="grid mt12">
+        <div class="card hover"><span class="kicker">Clasificación</span><p>Dice QUÉ hay en la imagen (una etiqueta).</p></div>
+        <div class="card hover"><span class="kicker" style="color:var(--blue)">Detección</span><p>Dice qué hay y DÓNDE (cajas). Ej.: YOLO para EPP.</p></div>
+        <div class="card hover"><span class="kicker" style="color:var(--green)">Segmentación</span><p>Etiqueta cada píxel. Mide áreas y daños.</p></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g20">20 · Matriz de confusión</h3>
+      <div class="grid two mt12" style="align-items:center">
+        <div class="matrix"><div class="ql good"><b>Verdadero +</b><span>predijo sí, era sí</span></div><div class="ql"><b>Falso +</b><span>predijo sí, era no</span></div><div class="ql"><b>Falso −</b><span>predijo no, era sí</span></div><div class="ql good"><b>Verdadero −</b><span>predijo no, era no</span></div><div class="axis-x">Predicción →</div><div class="axis-y">Realidad →</div></div>
+        <div><p class="lead">De aquí salen <strong>precisión</strong> (de lo marcado, cuánto acierta) y <strong>recall</strong> (de lo real, cuánto detecta).</p><p class="dim mt12">En casos críticos prioriza el recall: mejor revisar de más que perder un caso real.</p></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g21">21 · Anatomía de un agente</h3>
+      <div class="grid auto mt12">${(DB.componentes || []).map(c => `<div class="card pad-sm hover"><span class="kicker">${esc(c.k)}</span><h4 style="font-size:15px">${esc(c.e)}</h4><p style="font-size:14px">${esc(c.d)}</p></div>`).join("")}</div>
+
+      <h3 class="h3 mt32" id="g22">22 · MCP vs. A2A</h3>
+      <div class="grid two mt12">
+        <div class="card"><span class="kicker">MCP · las manos</span><p>Conecta UN agente con sus herramientas y datos (Revit, Drive, Sheets).</p></div>
+        <div class="card"><span class="kicker" style="color:var(--blue)">A2A · el equipo</span><p>Conecta agentes entre sí para que colaboren y deleguen tareas.</p></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g23">23 · De vibe coding a vibe engineering</h3>
+      <div class="card mt12">${aflow([{t:"Describir",s:"intención"},{t:"IA genera",s:"el código",hot:true},{t:"Probar",s:"¿funciona?"},{t:"Revisar",s:"criterio humano"},{t:"Producción",s:"con tests"}])}</div>
+
+      <h3 class="h3 mt32" id="g24">24 · Espectro de desarrollo</h3>
+      <div class="process mt12" style="--steps:4">
+        <div class="step"><span class="s">No-code</span><h4>Visual</h4><p>Bloques, sin programar (Make, n8n).</p></div>
+        <div class="step"><span class="s">Low-code</span><h4>Poco código</h4><p>Visual + ajustes en código.</p></div>
+        <div class="step"><span class="s">Vibe coding</span><h4>Lenguaje natural</h4><p>Describes y la IA codifica.</p></div>
+        <div class="step"><span class="s">Dev</span><h4>Código</h4><p>Control total, más esfuerzo.</p></div>
+      </div>
+
+      <h3 class="h3 mt32" id="g25">25 · Flujo documental con RAG (n8n)</h3>
+      <div class="card mt12">${aflow([{t:"Documentos",s:"normas/contratos"},{t:"Embeddings",s:"base vectorial"},{t:"Pregunta",s:"del usuario"},{t:"Recupera",s:"fragmentos",hot:true},{t:"Responde",s:"con cita"}])}</div>
+
+      <h3 class="h3 mt32" id="g26">26 · Embudo de adopción de IA (McKinsey)</h3>
+      <div class="card mt12"><div class="bars">${barsBlock(DB.stats.adopcionFunnel || [], "%")}</div><p class="dim mt12">Muchos prueban, pocos escalan: el valle entre piloto y producción.</p></div>
+
+      <h3 class="h3 mt32" id="g27">27 · La IA se adoptó más rápido que todo</h3>
+      <div class="card mt12"><div class="bars">${barsBlock(DB.stats.adopcionVelocidad || [], " años")}</div><p class="dim mt12">Años en alcanzar al 40% de la población.</p></div>
+
+      <h3 class="h3 mt32" id="g28">28 · Brecha AEC: potencial vs. uso real</h3>
+      <div class="card mt12"><div class="bars">${barsBlock(DB.stats.aecGapBars || [], "%")}</div><p class="dim mt12">El 84,8% de potencial frente al uso real es la oportunidad del sector.</p></div>
+
+      <h3 class="h3 mt32" id="g29">29 · Plataformas de automatización</h3>
+      <div class="card mt12"><div class="tmap">${(DB.autoPlats || []).map(p => { const n = (DB.automatizaciones || []).filter(a => a.plataforma === p).length; return `<div class="row"><b>${esc(p)}</b><div class="chips"><span class="chip" style="padding:4px 10px;font-size:12px">${n} receta${n === 1 ? "" : "s"}</span></div></div>`; }).join("")}</div></div>
+
+      <h3 class="h3 mt32" id="g30">30 · Roadmap del diplomado (12 rutas)</h3>
+      <div class="process mt12" style="--steps:${dipMods.length || 1}">${dipMods.map((t, i) => `<div class="step"><span class="s">${String(i + 1).padStart(2, "0")}</span><h4 style="font-size:14px">${esc(t)}</h4></div>`).join("")}</div>
 
       <h3 class="h3 mt32">+ Escalera de madurez IA</h3>
       <div class="process mt12" style="--steps:${DB.escalera.length}">${DB.escalera.map(x => `<div class="step"><span class="s">Nivel ${esc(x.n)}</span><h4>${esc(x.t)}</h4><p>${esc(x.d)}</p></div>`).join("")}</div>
@@ -925,6 +992,92 @@
       </div></article>`;
   }
 
+  /* ---------- Flashcards (navegación con flechas) ---------- */
+  function ensureFlash() { if (!state.flash) state.flash = { cat: "all", i: 0, flipped: false }; return state.flash; }
+  function flashPool() { const f = ensureFlash(); return f.cat === "all" ? DB.flashcards : DB.flashcards.filter(c => c.cat === f.cat); }
+  function renderFlashcards() {
+    const f = ensureFlash(); const cats = DB.flashCats || [];
+    bankShell(`<p class="eyebrow">Aprende · Flashcards</p><h2 class="h2">Flashcards de <span class="grad">IA</span></h2>
+      <p class="lead mt8">${DB.flashcards.length} tarjetas premium para repasar todo el diplomado. Usa <span class="kbd">←</span> <span class="kbd">→</span> para navegar y <span class="kbd">espacio</span> o clic para girar.</p>
+      <div class="filters no-print mt12" id="flashCats">
+        <button class="pill ${f.cat === "all" ? "active" : ""}" data-fcat="all">Todas</button>
+        ${cats.map(c => `<button class="pill ${f.cat === c ? "active" : ""}" data-fcat="${esc(c)}">${esc(c)}</button>`).join("")}
+      </div>
+      <div id="flashStage" class="mt16"></div>`);
+    paintFlash();
+    $("#flashCats").onclick = e => { const b = e.target.closest(".pill"); if (!b) return; f.cat = b.dataset.fcat; f.i = 0; f.flipped = false; renderFlashcards(); };
+  }
+  function paintFlash() {
+    const f = ensureFlash(), pool = flashPool();
+    const stage = $("#flashStage"); if (!stage) return;
+    if (!pool.length) { stage.innerHTML = emptyHTML(); return; }
+    f.i = clamp(f.i, 0, pool.length - 1);
+    const c = pool[f.i];
+    stage.innerHTML = `
+      <div class="flashwrap">
+        <div class="flashcard ${f.flipped ? "flipped" : ""}" id="flashcard" tabindex="0" aria-label="Tarjeta; pulsa para girar">
+          <div class="fc-face fc-front"><span class="fc-cat">${esc(c.cat)}</span><div class="fc-q">${esc(c.front)}</div><span class="fc-hint">␣ / clic para girar</span></div>
+          <div class="fc-face fc-back"><span class="fc-cat">respuesta</span><div class="fc-a">${esc(c.back)}</div></div>
+        </div>
+        <div class="flash-ctrl no-print">
+          <button class="btn icon" id="fcPrev" title="Anterior (←)">‹</button>
+          <span class="fc-count">${f.i + 1} / ${pool.length}</span>
+          <button class="btn icon" id="fcNext" title="Siguiente (→)">›</button>
+          <button class="btn sm" id="fcFlip" title="Girar (espacio)">↻ Girar</button>
+          <button class="btn sm" id="fcShuffle" title="Mezclar">🔀 Mezclar</button>
+        </div>
+      </div>`;
+    $("#flashcard").onclick = () => flipFlash();
+    $("#fcPrev").onclick = () => flashGo(-1);
+    $("#fcNext").onclick = () => flashGo(1);
+    $("#fcFlip").onclick = () => flipFlash();
+    $("#fcShuffle").onclick = () => { DB.flashcards = shuffle(DB.flashcards); state.flash.i = 0; state.flash.flipped = false; renderFlashcards(); };
+  }
+  function flashGo(d) { const f = ensureFlash(), n = flashPool().length; if (!n) return; f.i = (f.i + d + n) % n; f.flipped = false; paintFlash(); }
+  function flipFlash() { ensureFlash().flipped = !state.flash.flipped; paintFlash(); }
+
+  /* ---------- Automatización & agentes (recetas) ---------- */
+  function renderAutomatizaciones() {
+    const f = state.filters.automatizaciones || (state.filters.automatizaciones = { q: "", plat: "all" });
+    const plats = DB.autoPlats || [];
+    bankShell(`<p class="eyebrow">Banco · Automatización</p><h2 class="h2">Automatización & <span class="grad">agentes</span></h2>
+      <p class="lead mt8">${DB.automatizaciones.length} recetas listas para n8n, Make, Power Automate, Claude Code, Codex y Custom GPT. Copia el prompt, sigue los pasos y adáptalo a tu caso.</p>
+      <div class="toolbar no-print">
+        <div class="search">⌕ <input id="searchInput" type="text" placeholder="Buscar receta…" value="${esc(f.q)}" aria-label="Buscar"></div>
+      </div>
+      <div class="filters no-print" id="platFilters">
+        <button class="pill ${f.plat === "all" ? "active" : ""}" data-plat="all">Todas</button>
+        ${plats.map(p => `<button class="pill ${f.plat === p ? "active" : ""}" data-plat="${esc(p)}">${esc(p)}</button>`).join("")}
+      </div>
+      <div class="count-note no-print mt8" id="countNote"></div>
+      <div class="grid auto mt16" id="list"></div>`);
+    const paint = () => {
+      let d = DB.automatizaciones;
+      if (f.plat !== "all") d = d.filter(a => a.plataforma === f.plat);
+      if (f.q && f.q.trim()) { const q = f.q.toLowerCase(); d = d.filter(a => JSON.stringify(a).toLowerCase().includes(q)); }
+      $("#list").innerHTML = d.length ? d.map(autoCard).join("") : emptyHTML();
+      setCount(d.length, DB.automatizaciones.length);
+      $$("#list [data-acopy]").forEach(b => b.onclick = () => { const a = DB.automatizaciones.find(x => x.id === b.dataset.acopy); if (a) copyText(a.prompt, document.getElementById("aok-" + a.id)); });
+    };
+    paint(); wireReveal();
+    const si = $("#searchInput"); if (si) si.oninput = () => { f.q = si.value; paint(); };
+    $("#platFilters").onclick = e => { const b = e.target.closest(".pill"); if (!b) return; f.plat = b.dataset.plat; paint(); $$("#platFilters .pill").forEach(p => p.classList.toggle("active", p.dataset.plat === f.plat)); };
+  }
+  function autoCard(a) {
+    return `<article class="item" data-reveal>
+      <div class="top"><span class="badge violet">${esc(a.plataforma)}</span><span class="badge gray">${esc(a.nivel)}</span></div>
+      <h4>${esc(a.titulo)}</h4>
+      <p class="dim">${esc(a.objetivo)}</p>
+      <div class="prompt-box">${esc(a.prompt)}</div>
+      <div class="copy-row no-print"><button class="btn sm primary" data-acopy="${esc(a.id)}">⧉ Copiar prompt</button><span class="copy-ok" id="aok-${esc(a.id)}">✓ Copiado</span></div>
+      <button class="btn sm ghost no-print" data-toggle>Ver pasos y resultado ▾</button>
+      <div class="hidden-ans"><dl class="kv">
+        <dt>Pasos</dt><dd><ol style="margin:0;padding-left:18px">${a.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></dd>
+        <dt>Resultado</dt><dd>${esc(a.salida)}</dd>
+        <dt>Tip</dt><dd>${esc(a.tip)}</dd></dl></div>
+    </article>`;
+  }
+
   /* ===================================================================
      COMMAND PALETTE (⌘K)
      =================================================================== */
@@ -947,6 +1100,7 @@
     (DB.learningPrompts || []).forEach(p => { if (match(p.titulo) || match(p.cat) || match(p.que)) out.push({ type: "Prompts", ico: "⌨", label: p.titulo, sub: p.cat, run: () => { closeCmd(); state.filters.prompts = { q: p.titulo, cat: "all", nivel: "all" }; gotoModule("prompts"); } }); });
     (DB.glosario100 || []).forEach(l => l.concepts.forEach(c => { if (match(c.name) || match(c.sub)) out.push({ type: "100 conceptos", ico: "◫", label: c.name, sub: "Nivel " + l.no + " · " + l.tema, run: () => { closeCmd(); state.filters.glosario100 = { q: c.name, lvl: "all" }; gotoModule("glosario100"); } }); }));
     (DB.papers || []).forEach(p => { if (match(p.titulo) || match(p.cat) || match(p.metricLbl)) out.push({ type: "Investigación", ico: "▣", label: p.titulo, sub: p.cat, run: () => { closeCmd(); state.filters.papers = { q: p.titulo, cat: "all", nivel: "all" }; gotoModule("papers"); } }); });
+    (DB.automatizaciones || []).forEach(a => { if (match(a.titulo) || match(a.plataforma) || match(a.objetivo)) out.push({ type: "Automatización", ico: "⟳", label: a.titulo, sub: a.plataforma, run: () => { closeCmd(); state.filters.automatizaciones = { q: a.titulo, plat: "all" }; gotoModule("automatizaciones"); } }); });
     cmdActions().forEach(a => { if (match(a.label) || match(a.kw)) out.push({ type: "Acciones", ico: a.ico, label: a.label, sub: a.sub, run: a.run }); });
     return out;
   }
@@ -1314,6 +1468,11 @@
       const c = conceptById(state.conceptOpen);
       if (c) { const nav = conceptNav(c); openConcept(e.key === "ArrowRight" ? nav.next.id : nav.prev.id); }
       e.preventDefault(); return;
+    }
+    if (state.mod === "flashcards") {
+      if (e.key === "ArrowRight") { flashGo(1); e.preventDefault(); return; }
+      if (e.key === "ArrowLeft") { flashGo(-1); e.preventDefault(); return; }
+      if (e.key === " " || e.key === "Enter") { flipFlash(); e.preventDefault(); return; }
     }
     if (e.key === "ArrowRight") { inDeck ? deckGo(1) : advanceModule(1); e.preventDefault(); }
     else if (e.key === "ArrowLeft") { inDeck ? deckGo(-1) : advanceModule(-1); e.preventDefault(); }
